@@ -2,7 +2,7 @@
 
 
 void device_info() {
-	cudaDeviceProp devProv;
+    cudaDeviceProp devProv;
     CHECK(cudaGetDeviceProperties(&devProv, 0));
     printf("**********GPU info**********\n");
     printf("Name: %s\n", devProv.name);
