@@ -18,6 +18,18 @@ int ReverseInt(int i) {
 
 // Data loader function for images (like read_mnist_data in mnist.cc)
 void readMNISTImages(const string& filename, vector<vector<float>>& images, int& numImages, int& imageSize) {
+/*
+     * Function: readMNISTImages
+     * This function loads MNIST image data from the specified file.
+     * 
+     * Data Organization After Loading:
+     * - `images`: A 2D vector where each row represents a single image as a vector of floats.
+     *   - Each image is normalized to values in the range [0, 1].
+     *   - Size: `images[numImages][imageSize]`, where `numImages` is the number of images and
+     *     `imageSize` is the total number of pixels (e.g., 28x28 = 784 for MNIST).
+     * - `numImages`: Total number of images loaded.
+     * - `imageSize`: The size of each image in pixels (28x28 for MNIST = 784).
+     */
     ifstream file(filename, ios::binary);
     if (!file.is_open()) {
         throw runtime_error("Could not open file: " + filename);
@@ -50,6 +62,15 @@ void readMNISTImages(const string& filename, vector<vector<float>>& images, int&
 
 // Data loader function for labels (like read_mnist_label in mnist.cc)
 void readMNISTLabels(const string& filename, vector<int>& labels, int& numLabels) {
+ /*
+     * Function: readMNISTLabels
+     * This function loads MNIST label data from the specified file.
+     * 
+     * Data Organization After Loading:
+     * - `labels`: A vector of integers where each element represents a single label.
+     *   - Size: `labels[numLabels]`, where `numLabels` is the total number of labels.
+     * - `numLabels`: Total number of labels loaded.
+     */
     ifstream file(filename, ios::binary);
     if (!file.is_open()) {
         throw runtime_error("Could not open file: " + filename);
