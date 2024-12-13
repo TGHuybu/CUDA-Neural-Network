@@ -1,6 +1,6 @@
 #include "utils_host.h"
-
-
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 int ReverseInt(int i) {
     unsigned char ch1, ch2, ch3, ch4;
     ch1 = i & 255;
