@@ -1,3 +1,8 @@
 #include "libs.h"
 
-void host_info();
+
+int ReverseInt(int);
+
+void readImages(const string&, vector<vector<float>>&, int&, int&);
+
+void readLabels(const string&, vector<int>&, int&);
