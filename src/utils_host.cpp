@@ -10,8 +10,8 @@ int ReverseInt(int i) {
     return ((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 }
 
-
-void readImages(const string& filename, vector<vector<float>>& images, int& numImages, int& imageSize) {
+// Function to load and reshape the MNIST image data
+void readImages(const string& filename, vector<vector<float>>& images, int& numImages, int& imageSize, int& n_rows, int& n_cols) {
     ifstream file(filename, ios::binary);
     if (!file.is_open()) {
         throw runtime_error("Could not open file: " + filename);
@@ -25,10 +25,13 @@ void readImages(const string& filename, vector<vector<float>>& images, int& numI
     }
 
     file.read((char*)&numImages, sizeof(numImages));
-    file.read((char*)&imageSize, sizeof(imageSize));
+    file.read((char*)&n_rows, sizeof(n_rows));
+    file.read((char*)&n_cols, sizeof(n_cols));
     numImages = ReverseInt(numImages);
-    imageSize = ReverseInt(imageSize);
-    imageSize = imageSize * imageSize; 
+    n_rows = ReverseInt(n_rows);
+    n_cols = ReverseInt(n_cols);
+
+    imageSize = n_rows * n_cols; // Set image size to be the number of pixels in one image
 
     images.resize(numImages, vector<float>(imageSize));
     for (int i = 0; i < numImages; i++) {
@@ -42,38 +45,54 @@ void readImages(const string& filename, vector<vector<float>>& images, int& numI
     file.close();
 }
 
+// Function to save the image as a PNG using stb_image_write
+void saveImageAsPNG(const vector<float>& image, const string& filename, int n_rows, int n_cols) {
+    // Use n_rows and n_cols for image dimensions
+    vector<unsigned char> imgData(n_rows * n_cols);
 
-void readLabels(const string& filename, vector<int>& labels, int& numLabels) {
-    /*
-     * Function: readMNISTLabels
-     * This function loads MNIST label data from the specified file.
-     * 
-     * Data Organization After Loading:
-     * - `labels`: A vector of integers where each element represents a single label.
-     *   - Size: `labels[numLabels]`, where `numLabels` is the total number of labels.
-     * - `numLabels`: Total number of labels loaded.
-     */
-    ifstream file(filename, ios::binary);
-    if (!file.is_open()) {
-        throw runtime_error("Could not open file: " + filename);
+    // Convert float pixel values (0 to 1) to unsigned char (0 to 255)
+    for (int i = 0; i < n_rows; ++i) {  // Iterate over the rows
+        for (int j = 0; j < n_cols; ++j) {  // Iterate over the columns
+            int index = i * n_cols + j;  // Calculate the index in the 1D array
+            imgData[index] = static_cast<unsigned char>(image[index] * 255.0f);  // Convert to unsigned char
+        }
     }
 
-    int magic_number = 0;
-    file.read((char*)&magic_number, sizeof(magic_number));
-    magic_number = ReverseInt(magic_number);
-    if (magic_number != 2049) {
-        throw runtime_error("Invalid magic number in label file.");
+    // Save the image using stb_image_write as a grayscale PNG
+    int result = stbi_write_png(filename.c_str(), n_cols, n_rows, 1, imgData.data(), n_cols);
+    if (result == 0) {
+        cerr << "Error saving image to file: " << filename << endl;
+    } else {
+        cout << "Image saved as: " << filename << endl;
+    }
+}
+
+// Main function to read and save images
+int main() {
+    try {
+        vector<vector<float>> trainImages;
+        vector<int> trainLabels;
+        int numImages, imageSize, numLabels;
+        int n_rows, n_cols;  // Dimensions of the images (height and width)
+
+        // Load the training images
+        readImages("mnist/train-images-idx3-ubyte", trainImages, numImages, imageSize, n_rows, n_cols);
+        cout << "Train Images: " << numImages << " with size " << imageSize << " each." << endl;
+
+        // Generate a random index to select a random image
+        srand(time(0));  // Initialize random seed
+        int randomIndex = rand() % numImages;  // Generate a random index within the range
+
+        // Print some information about the selected image
+        cout << "Random index: " << randomIndex << endl;
+        cout << "First pixel value of random image: " << trainImages[randomIndex][0] << endl;
+
+        // Save the randomly selected image
+        saveImageAsPNG(trainImages[randomIndex], "random_image.png", n_rows, n_cols);
+
+    } catch (const exception& e) {
+        cerr << "Error: " << e.what() << endl;
     }
 
-    file.read((char*)&numLabels, sizeof(numLabels));
-    numLabels = ReverseInt(numLabels);
-
-    labels.resize(numLabels);
-    for (int i = 0; i < numLabels; i++) {
-        unsigned char label;
-        file.read((char*)&label, sizeof(label));
-        labels[i] = static_cast<int>(label);
-    }
-
-    file.close();
+    return 0;
 }
