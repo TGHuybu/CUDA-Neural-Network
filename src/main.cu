@@ -5,10 +5,10 @@ int main() {
     try {
         vector<vector<float>> trainImages;
         vector<int> trainLabels;
-        int numImages, imageSize, numLabels;
+         int numImages, imageSize, numLabels,n_rows, n_cols;
 
         // Load training images
-        readImages("fashion/t10k-images-idx3-ubyte", trainImages, numImages, imageSize);
+        readImages("mnist/t10k-images-idx3-ubyte", trainImages, numImages, imageSize, n_rows, n_cols);
         cout << "Train Images: " << numImages << " with size " << imageSize << " each." << endl;
 
         // Load training labels
