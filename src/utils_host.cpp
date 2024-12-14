@@ -101,32 +101,4 @@ void saveImageAsPNG(const vector<float>& image, const string& filename, int n_ro
     }
 }
 
-// Main function to read and save images
-int main() {
-    try {
-        vector<vector<float>> trainImages;
-        vector<int> trainLabels;
-        int numImages, imageSize, numLabels;
-        int n_rows, n_cols;  // Dimensions of the images (height and width)
 
-        // Load the training images
-        readImages("mnist/train-images-idx3-ubyte", trainImages, numImages, imageSize, n_rows, n_cols);
-        cout << "Train Images: " << numImages << " with size " << imageSize << " each." << endl;
-
-        // Generate a random index to select a random image
-        srand(time(0));  // Initialize random seed
-        int randomIndex = rand() % numImages;  // Generate a random index within the range
-
-        // Print some information about the selected image
-        cout << "Random index: " << randomIndex << endl;
-        cout << "First pixel value of random image: " << trainImages[randomIndex][0] << endl;
-
-        // Save the randomly selected image
-        saveImageAsPNG(trainImages[randomIndex], "random_image.png", n_rows, n_cols);
-
-    } catch (const exception& e) {
-        cerr << "Error: " << e.what() << endl;
-    }
-
-    return 0;
-}
