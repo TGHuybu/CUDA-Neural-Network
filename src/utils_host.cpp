@@ -45,6 +45,40 @@ void readImages(const string& filename, vector<vector<float>>& images, int& numI
     file.close();
 }
 
+void readLabels(const string& filename, vector<int>& labels, int& numLabels) {
+    /*
+     * Function: readMNISTLabels
+     * This function loads MNIST label data from the specified file.
+     * 
+     * Data Organization After Loading:
+     * - `labels`: A vector of integers where each element represents a single label.
+     *   - Size: `labels[numLabels]`, where `numLabels` is the total number of labels.
+     * - `numLabels`: Total number of labels loaded.
+     */
+    ifstream file(filename, ios::binary);
+    if (!file.is_open()) {
+        throw runtime_error("Could not open file: " + filename);
+    }
+
+    int magic_number = 0;
+    file.read((char*)&magic_number, sizeof(magic_number));
+    magic_number = ReverseInt(magic_number);
+    if (magic_number != 2049) {
+        throw runtime_error("Invalid magic number in label file.");
+    }
+
+    file.read((char*)&numLabels, sizeof(numLabels));
+    numLabels = ReverseInt(numLabels);
+
+    labels.resize(numLabels);
+    for (int i = 0; i < numLabels; i++) {
+        unsigned char label;
+        file.read((char*)&label, sizeof(label));
+        labels[i] = static_cast<int>(label);
+    }
+
+    file.close();
+}
 // Function to save the image as a PNG using stb_image_write
 void saveImageAsPNG(const vector<float>& image, const string& filename, int n_rows, int n_cols) {
     // Use n_rows and n_cols for image dimensions
