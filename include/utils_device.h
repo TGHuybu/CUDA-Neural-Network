@@ -13,3 +13,6 @@
 
 
 void device_info();
+__global__ void matMul(float*, float*, float*, int, int, int);
+__global__ void ReLU(float*, int);
+__global__ void softmax(float *, float *, int , int ) ;
