@@ -106,7 +106,7 @@ __global__ void softmax(float *input, float *output, int batch_size, int output_
     if (batch_idx >= batch_size) return;
 
     // Find maximum value in the row
-    float local_max = -FLT_MAX;
+    float local_max = -1;   // temp in place of old const? 
     for (int i = 0; i < output_size; ++i) {
         local_max = max(local_max, input[batch_idx * output_size + i]);
     }

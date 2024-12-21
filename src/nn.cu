@@ -1,5 +1,71 @@
 #include "nn.h"
 
+
+vector<float*> forward(vector<float> X, vector<vector<float>> Ws, 
+                        int n_samples, int n_features, int hidden_size, int out_size, bool use_gpu) {
+    
+    // Convert to pointer for ease of handling
+    float *X_in = X.data();
+    
+    // Save outputs of each layer
+    vector<float*> outs;
+    outs.push_back(X_in);
+
+    for (int i = 0; i < Ws.size(); i++) {
+        if (i != 0) n_features = hidden_size;
+        if (i == Ws.size() - 1) hidden_size = out_size;
+
+        vector<float> W = Ws[i];
+        float *out = new float[n_samples * hidden_size];
+        cout << n_samples * hidden_size << endl;
+
+        if (use_gpu) {
+            // Allocate memory on device
+            float *d_X, *d_W, *d_out;
+            CHECK(cudaMalloc(&d_X, n_samples * n_features *sizeof(float)));
+            CHECK(cudaMalloc(&d_W, W.size() * sizeof(float)));
+            CHECK(cudaMalloc(&d_out, n_samples * hidden_size * sizeof(float)));
+
+            // Copy memory: host-to-device
+            CHECK(cudaMemcpy(d_X, X_in, n_samples * n_features * sizeof(float), cudaMemcpyHostToDevice));
+            CHECK(cudaMemcpy(d_W, W.data(), W.size() * sizeof(float), cudaMemcpyHostToDevice));
+
+            // Define block and grid size
+            dim3 blockSize(16, 16);
+            dim3 gridSize((hidden_size + blockSize.x - 1) / blockSize.x,
+                            (n_samples + blockSize.y - 1) / blockSize.y);
+
+            // Multiply
+            matMul<<<gridSize, blockSize>>>(d_X, d_W, d_out, n_samples, n_features, hidden_size);
+
+            // Activation function
+            dim3 blockSize_1D(256);
+            dim3 gridSize_1D((n_samples * hidden_size + blockSize_1D.x - 1) / 256);
+            if (i == Ws.size() - 1)
+                softmax<<<gridSize_1D, blockSize_1D>>>(d_out, d_out, n_samples, out_size);
+            else
+                ReLU<<<gridSize_1D, blockSize_1D>>>(d_out, n_samples * hidden_size);
+
+            // Copy memory: device-to-host
+            CHECK(cudaMemcpy(out, d_out, n_samples * hidden_size * sizeof(float), cudaMemcpyDeviceToHost));
+
+            // Free device memory
+            CHECK(cudaFree(d_X));
+            CHECK(cudaFree(d_W));
+            CHECK(cudaFree(d_out));
+
+        } else {
+            // TODO: CPU forward
+        }
+
+        outs.push_back(out);
+        X_in = out;
+    }
+
+    return outs;
+}
+
+
 void forwardCUDA(const float* h_X, const float* h_W1, const float* h_b1, 
                  const float* h_W2, const float* h_b2,
                  const float* h_W3, const float* h_b3,

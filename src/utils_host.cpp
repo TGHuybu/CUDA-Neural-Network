@@ -1,4 +1,6 @@
 #include "utils_host.h"
+
+
 int ReverseInt(int i) {
     unsigned char ch1, ch2, ch3, ch4;
     ch1 = i & 255;
@@ -8,7 +10,7 @@ int ReverseInt(int i) {
     return ((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 }
 
-// Function to load and reshape the MNIST image data
+
 void readImages(const string& filename, vector<vector<float>>& images, int& numImages, int& imageSize, int& n_rows, int& n_cols) {
     ifstream file(filename, ios::binary);
     if (!file.is_open()) {
@@ -42,6 +44,7 @@ void readImages(const string& filename, vector<vector<float>>& images, int& numI
 
     file.close();
 }
+
 
 void readLabels(const string& filename, vector<int>& labels, int& numLabels) {
     /*
@@ -77,6 +80,8 @@ void readLabels(const string& filename, vector<int>& labels, int& numLabels) {
 
     file.close();
 }
+
+
 // Function to save the image as a PNG using stb_image_write
 /*
 void saveImageAsPNG(const vector<float>& image, const string& filename, int n_rows, int n_cols) {
@@ -101,6 +106,7 @@ void saveImageAsPNG(const vector<float>& image, const string& filename, int n_ro
 }
 */
 
+
 float randValue(){
     random_device rd;
     mt19937 gen(rd());
@@ -114,11 +120,13 @@ float randValue(){
     return value;
 }
 
+
 void makeValue(vector<float> &vt, int h, int w){
     for (int i = 0; i < h*w; i++ ){
         vt[i] = randValue();
     }
 }
+
 
 void init_param(vector<float> &W1, vector<float> &b1,
                 vector<float> &W2, vector<float> &b2,
