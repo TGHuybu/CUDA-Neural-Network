@@ -3,24 +3,34 @@
 
 int main() {
     
-
+    //-- Set up 
     const int batch_size = 32;
     const int input_size = 784;
-    const int hidden1_size = 128;
-    const int hidden2_size = 128;
+    const int hidden_size = 128;
     const int output_size = 10;
+    const int n_hidden = 2;
 
+    //-- Init weights
+    
     // Khởi tạo các trọng số và bias
-    vector<float> W1(input_size * hidden1_size);
-    vector<float> b1(hidden1_size);
-    vector<float> W2(hidden1_size * hidden2_size);
-    vector<float> b2(hidden2_size);
-    vector<float> W3(hidden2_size * output_size);
+    vector<float> W1(input_size * hidden_size);
+    vector<float> b1(hidden_size);
+    vector<float> W2(hidden_size * hidden_size);
+    vector<float> b2(hidden_size);
+    vector<float> W3(hidden_size * output_size);
     vector<float> b3(output_size);
+    
+    // -- NEW INIT
+    // init_weights(Ws);
 
+    //-- OLD INIT
     init_param(W1, b1, W2, b2, W3, b3);
+    vector<vector<float>> Ws;
+    Ws.push_back(W1);
+    Ws.push_back(W2);
+    Ws.push_back(W3);
 
-    // Đọc dữ liệu MNIST
+    //-- Load data
     vector<vector<float>> trainImages;
     vector<int> trainLabels;
     vector<vector<float>> testImages;
@@ -45,17 +55,28 @@ int main() {
         cout << "Test Labels: " << numLabels << " labels loaded." << endl;
 
     } catch (const exception& e) {
-        cerr << "Error reading MNIST data: " << e.what() << endl;
+        cerr << "ERROR: " << e.what() << endl;
         return 1;
     }
 
-    // Sử dụng batch_size ảnh đầu tiên làm input
+    // Flatten input batch
     vector<float> X(batch_size * input_size);
     for (int i = 0; i < batch_size; ++i) {
         copy(trainImages[i].begin(), trainImages[i].end(), X.begin() + i * input_size);
     }
 
-    // Kết quả đầu ra
+    //-- TEST NEW FORWARD
+    vector<float*> outputs = forward(
+        X, Ws, batch_size, input_size, hidden_size, output_size
+    );
+    
+    cout << "Output from the NEW forward pass (first 10 values):\n";
+    cout << outputs.size() << endl;
+    for (int i = 0; i < min(10, batch_size * output_size); ++i)
+        cout << outputs.at(3)[i] << " ";
+    cout << endl;
+
+    //-- TEST OLD FORWARD
     vector<float> output(batch_size * output_size);
 
     // Gọi forward pass trên GPU
@@ -66,10 +87,10 @@ int main() {
 
     // In kết quả đầu ra (chỉ in vài giá trị để kiểm tra)
     cout << "Output from the forward pass (first 10 values):\n";
-    for (int i = 0; i < min(10, batch_size * output_size); ++i) {
+    for (int i = 0; i < min(10, batch_size * output_size); ++i)
         cout << output[i] << " ";
-    }
     cout << endl;
+    cout << "b3:\n";
 
     return 0;
 }

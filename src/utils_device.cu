@@ -17,7 +17,7 @@ void device_info() {
     printf("****************************\n");
 }
 
-__global__ void matMul(float* A, float* B, float* C, int m, int n, int k) {
+__global__ void _matmul_GPU(float* A, float* B, float* C, int m, int n, int k) {
     int row = blockIdx.y * blockDim.y + threadIdx.y; 
     int col = blockIdx.x * blockDim.x + threadIdx.x; 
 
@@ -60,7 +60,7 @@ __global__ void matMul(float* A, float* B, float* C, int m, int n, int k) {
 
 // }
 
-__global__ void ReLU(float* Z, int size) {
+__global__ void _ReLU_GPU(float* Z, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
         Z[idx] = fmaxf(0.0f, Z[idx]);
@@ -98,7 +98,7 @@ __global__ void ReLU(float* Z, int size) {
 //     output[idx] = exp(input[idx] - max_val[threadIdx.x]) / sum[threadIdx.x];
 // }
 
-__global__ void softmax(float *input, float *output, int batch_size, int output_size) {
+__global__ void _softmax_GPU(float *input, float *output, int batch_size, int output_size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int batch_idx = idx / output_size;
     int output_idx = idx % output_size;

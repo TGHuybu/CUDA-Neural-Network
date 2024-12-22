@@ -36,15 +36,15 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws,
                             (n_samples + blockSize.y - 1) / blockSize.y);
 
             // Multiply
-            matMul<<<gridSize, blockSize>>>(d_X, d_W, d_out, n_samples, n_features, hidden_size);
+            _matmul_GPU<<<gridSize, blockSize>>>(d_X, d_W, d_out, n_samples, n_features, hidden_size);
 
             // Activation function
             dim3 blockSize_1D(256);
             dim3 gridSize_1D((n_samples * hidden_size + blockSize_1D.x - 1) / 256);
             if (i == Ws.size() - 1)
-                softmax<<<gridSize_1D, blockSize_1D>>>(d_out, d_out, n_samples, out_size);
+                _softmax_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, d_out, n_samples, out_size);
             else
-                ReLU<<<gridSize_1D, blockSize_1D>>>(d_out, n_samples * hidden_size);
+                _ReLU_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, n_samples * hidden_size);
 
             // Copy memory: device-to-host
             CHECK(cudaMemcpy(out, d_out, n_samples * hidden_size * sizeof(float), cudaMemcpyDeviceToHost));
@@ -115,30 +115,30 @@ void forwardCUDA(const float* h_X, const float* h_W1, const float* h_b1,
                    (batch_size + blockSize.y - 1) / blockSize.y);
 
     // Lớp ẩn thứ nhất: Z1 = X * W1 + b1
-    matMul<<<gridSize1, blockSize>>>(d_X, d_W1, d_Z1, batch_size, input_size, hidden1_size);
+    _matmul_GPU<<<gridSize1, blockSize>>>(d_X, d_W1, d_Z1, batch_size, input_size, hidden1_size);
 
     // Thêm bias vào Z1 và áp dụng ReLU
     dim3 block1D((batch_size * hidden1_size + 255) / 256);
     cudaMemcpy(d_Z1, d_b1, hidden1_size * sizeof(float), cudaMemcpyDeviceToDevice);
-    ReLU<<<block1D, 256>>>(d_Z1, batch_size * hidden1_size);
+    _ReLU_GPU<<<block1D, 256>>>(d_Z1, batch_size * hidden1_size);
 
     // Lớp ẩn thứ hai: Z2 = Z1 * W2 + b2
     dim3 gridSize2((hidden2_size + blockSize.x - 1) / blockSize.x,
                    (batch_size + blockSize.y - 1) / blockSize.y);
-    matMul<<<gridSize2, blockSize>>>(d_Z1, d_W2, d_Z2, batch_size, hidden1_size, hidden2_size);
+    _matmul_GPU<<<gridSize2, blockSize>>>(d_Z1, d_W2, d_Z2, batch_size, hidden1_size, hidden2_size);
 
     // Thêm bias vào Z2 và áp dụng ReLU
     dim3 block2D((batch_size * hidden2_size + 255) / 256);
     cudaMemcpy(d_Z2, d_b2, hidden2_size * sizeof(float), cudaMemcpyDeviceToDevice);
-    ReLU<<<block2D, 256>>>(d_Z2, batch_size * hidden2_size);
+    _ReLU_GPU<<<block2D, 256>>>(d_Z2, batch_size * hidden2_size);
 
     // Lớp đầu ra: output = Z2 * W3 + b3
     dim3 gridSize3((output_size + blockSize.x - 1) / blockSize.x,
                    (batch_size + blockSize.y - 1) / blockSize.y);
-    matMul<<<gridSize3, blockSize>>>(d_Z2, d_W3, d_output, batch_size, hidden2_size, output_size);
+    _matmul_GPU<<<gridSize3, blockSize>>>(d_Z2, d_W3, d_output, batch_size, hidden2_size, output_size);
     dim3 blockSoftmax(256);
     dim3 gridSoftmax((batch_size * output_size + blockSoftmax.x - 1) / blockSoftmax.x);
-    softmax<<<gridSoftmax, blockSoftmax>>>(d_output, d_output, batch_size, output_size);
+    _softmax_GPU<<<gridSoftmax, blockSoftmax>>>(d_output, d_output, batch_size, output_size);
 
     // Copy kết quả từ GPU về CPU
     cudaMemcpy(h_output, d_output, size_output, cudaMemcpyDeviceToHost);

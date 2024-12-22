@@ -128,6 +128,26 @@ void makeValue(vector<float> &vt, int h, int w){
 }
 
 
+void init_weights(vector<vector<float>> &Ws) {
+    // AMAZING RANDOM GENERATOR (WOW!)
+    random_device rd;
+    mt19937 gen(rd());
+    normal_distribution<> distrib(0, 1);
+
+    auto randValue = [&]() -> float {
+        float value;
+        do {
+            value = distrib(gen);
+        } while (value < -1.0 || value > 1.0);
+        return static_cast<float>(value);
+    };
+    
+    // Init weights with random numbers
+    for (int i = 0; i < Ws.size(); i++)
+        for (auto &w : Ws[i]) w = randValue();
+}
+
+
 void init_param(vector<float> &W1, vector<float> &b1,
                 vector<float> &W2, vector<float> &b2,
                 vector<float> &W3, vector<float> &b3) {

@@ -1,3 +1,6 @@
+#ifndef UTILS_DEVICE_H
+#define UTILS_DEVICE_H
+
 #include "libs.h"
 
 
@@ -13,6 +16,11 @@
 
 
 void device_info();
-__global__ void matMul(float*, float*, float*, int, int, int);
-__global__ void ReLU(float*, int);
-__global__ void softmax(float *, float *, int , int ) ;
+
+__global__ void _matmul_GPU(float*, float*, float*, int, int, int);
+
+__global__ void _ReLU_GPU(float*, int);
+
+__global__ void _softmax_GPU(float *, float *, int , int ) ;
+
+#endif
