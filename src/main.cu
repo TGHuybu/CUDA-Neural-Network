@@ -1,4 +1,5 @@
-# include "nn.h"
+#include "nn.h"
+#include "data.h"
 
 
 int main() {

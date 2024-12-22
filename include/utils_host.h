@@ -3,12 +3,6 @@
 
 #include "libs.h"
 
-int ReverseInt(int);
-
-void readImages(const string&, vector<vector<float>>&, int&, int&, int&, int&);
-
-void readLabels(const string&, vector<int>& , int& );
-
 void init_weights(vector<vector<float>> &Ws);
 
 void init_param(vector<float> &, vector<float> &,
