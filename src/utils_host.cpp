@@ -115,17 +115,6 @@ float* _matmul_CPU(float* A, float* B, int m, int n, int k) {
 }
 
 
-float* _dReLU_CPU(float* y, int n) {
-    float* dy = new float[n];
-    for (int i = 0; i < n; i++) {
-        if (y[i] >= 0) dy[i] = 1;
-        else dy[i] = 0;
-    }
-
-    return dy;
-}
-
-
 float _sum_CPU(float* a, int n) {
     float sum = 0;
     for (int i = 0; i < n; i++)
@@ -135,8 +124,47 @@ float _sum_CPU(float* a, int n) {
 }
 
 
-// vector<float*> _fw_CPU(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
-//                         int hidden_size, int out_size) {
-//     // TODO
-// }
+float* _ReLU_CPU(float* Z, int size) {
+    float* output = new float[size];
+    for (int i = 0; i < size; i++)
+        output[i] = fmaxf(0, Z[i]);
+
+    return output;
+}
+
+
+float* _softmax_CPU(float *input, int batch_size, int output_size) {
+    float* output = new float[batch_size * output_size];
+    for (int i = 0; i < batch_size; i++) {
+
+        float local_max = -1;  // const?
+        for (int j = 0; j < output_size; j++) {
+            local_max = max(local_max, input[output_size * i + j]);
+        }
+
+        float exp_sum = 0;
+        for (int j = 0; j < output_size; j++) {
+            float exp_val = exp(input[output_size * i + j] - local_max);
+            output[output_size * i + j] = exp_val;
+            exp_sum += exp_val;
+        }
+
+        for (int j = 0; j < output_size; j++) {
+            output[output_size * i + j] /= exp_sum;
+        }
+    }
+
+    return output;
+}
+
+
+float* _dReLU_CPU(float* y, int n) {
+    float* dy = new float[n];
+    for (int i = 0; i < n; i++) {
+        if (y[i] >= 0) dy[i] = 1;
+        else dy[i] = 0;
+    }
+
+    return dy;
+}
 

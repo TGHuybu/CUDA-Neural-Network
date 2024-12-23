@@ -78,16 +78,29 @@ int main() {
     //-- TEST NEW FORWARD
     GpuTimer timer;
     timer.Start();
-    vector<float*> outputs = forward(
-        X, Ws, num_img_train, input_size, hidden_size, output_size, true
+    vector<float*> outputs_cpu = forward(
+        X, Ws, num_img_train, input_size, hidden_size, output_size, false
     );
     timer.Stop();
     float time = timer.Elapsed();
-    printf("Processing time of all device streams: %f ms\n\n", time);
+    printf("FORWARD TIME CPU: %f ms\n\n", time);
+
+    timer.Start();
+    vector<float*> outputs_gpu = forward(
+        X, Ws, num_img_train, input_size, hidden_size, output_size, true
+    );
+    timer.Stop();
+    time = timer.Elapsed();
+    printf("FORWARD TIME GPU: %f ms\n\n", time);
+
+    float err = 0;
+    for (int i = 0; i < num_img_train * output_size; i++) {
+        err += outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]
+    }
 
     //-- Test train
-    train(trainImages, trainLabels, Ws,
-           hidden_size, output_size, 10, 0.05, true);
+    // train(trainImages, trainLabels, Ws,
+    //        hidden_size, output_size, 10, 0.05, true);
 
     return 0;
 }

@@ -26,7 +26,26 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
     if (use_gpu) { 
         outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
     } else {
-        // TODO: CPU forward
+        outs.push_back(X.data());
+
+        for (int i = 0; i < Ws.size(); i++) {
+            if (i != 0) n_features = hidden_size;
+            if (i == Ws.size() - 1) hidden_size = out_size;
+    
+            vector<float> W = Ws[i];
+            float* X_in = outs[i];
+
+            // Multiply
+            float* out = _matmul_CPU(X_in, W.data(), n_samples, n_features, hidden_size);
+
+            // Activation function
+            if (i == Ws.size() - 1)
+                out = _softmax_CPU(out, n_samples, out_size);
+            else
+                out = _ReLU_CPU(out, n_samples * hidden_size);
+
+            outs.push_back(out);
+        }
     }
 
     return outs;

@@ -21,9 +21,14 @@ float* _ewmul_CPU(float*, float*, int);
 
 float* _matmul_CPU(float*, float*, int, int, int);
 
+float _sum_CPU(float*, int);
+
+float* _ReLU_CPU(float*, int);
+
+float* _softmax_CPU(float*, int, int);
+
 float* _dReLU_CPU(float*, int);
 
-float _sum_CPU(float*, int);
 
 // vector<float*> _fw_CPU(vector<float>, vector<vector<float>>, int, int, 
 //                         int, int);
