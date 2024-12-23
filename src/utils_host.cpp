@@ -1,7 +1,7 @@
 #include "utils_host.h"
 
 
-float randValue(){
+float _randValue(){
     random_device rd;
     mt19937 gen(rd());
     normal_distribution<> distrib(0, 1); 
@@ -15,9 +15,9 @@ float randValue(){
 }
 
 
-void makeValue(vector<float> &vt, int h, int w){
+void _makeValue(vector<float> &vt, int h, int w){
     for (int i = 0; i < h*w; i++ ){
-        vt[i] = randValue();
+        vt[i] = _randValue();
     }
 }
 
@@ -38,7 +38,7 @@ void init_weights(vector<vector<float>> &Ws) {
     
     // Init weights with random numbers
     for (int i = 0; i < Ws.size(); i++)
-        for (auto &w : Ws[i]) w = randValue();
+        for (auto &w : Ws[i]) w = _randValue();
 }
 
 
@@ -57,31 +57,86 @@ void init_param(vector<float> &W1, vector<float> &b1,
         return static_cast<float>(value);
     };
 
-    for (auto &w : W1) w = randValue();
-    for (auto &w : b1) w = randValue();
-    for (auto &w : W2) w = randValue();
-    for (auto &w : b2) w = randValue();
-    for (auto &w : W3) w = randValue();
-    for (auto &w : b3) w = randValue();
+    for (auto &w : W1) w = _randValue();
+    for (auto &w : b1) w = _randValue();
+    for (auto &w : W2) w = _randValue();
+    for (auto &w : b2) w = _randValue();
+    for (auto &w : W3) w = _randValue();
+    for (auto &w : b3) w = _randValue();
 }
 
-// void init_param(){
-//     vector<float> W1(784*128);
-//     vector<float> b1(1,128);
-//     vector<float> W2(128,128);
-//     vector<float> b2(1,128);
-//     vector<float> W3(128,10);
-//     vector<float> b3(10,10);
-    
-//     makeValue(W1,784,128);
-//     makeValue(b1,1,128);
-//     makeValue(W2,128,128);
-//     makeValue(b2,1,128);
-//     makeValue(W3,128,10);
-//     makeValue(b3,1,10);
 
-//     return W1,b1,W2,b2,W3,b3;
+float* _transpose(float *A, int n_rows, int n_cols) {
+    float* A_T = new float[n_rows * n_cols];
+    for (int i = 0; i < n_rows; i++) {
+        for (int j = 0; j < n_cols; j++)
+            A_T[n_rows * j + i] = A[n_cols * i + j];
+    }
+
+    return A_T;
+}
+
+
+float* _add_CPU(float* a, float* b, int n, float sign) {
+    // Perform addition or subtraction (based on sign)
+    // >>> c = a + sign * b 
+    // >>> <=> (c = a + b) or (c = a - b)
+    float* c = new float[n];
+    for (int i = 0; i < n; i++)
+        c[i] = a[i] + sign * b[i];
+
+    return c;
+}
+
+
+float* _ewmul_CPU(float* a, float* b, int n) {
+    // Element-wise multiplicationn
+    float* c = new float[n];
+    for (int i = 0; i < n; i++)
+        c[i] = a[i] * b[i];
+
+    return c;
+}
+
+
+float* _matmul_CPU(float* A, float* B, int m, int n, int k) {
+    float* C = new float[m * k];
+    for (int row = 0; row < m; row++) {
+        for (int col = 0; col < k; col++) {
+            float c = 0;
+            for (int i = 0; i < n; i++) 
+                c += A[row * n + i] * B[i * k + col];
+
+            C[row * k + col] = c;
+        }
+    }
+
+    return C;
+}
+
+
+float* _dReLU_CPU(float* y, int n) {
+    float* dy = new float[n];
+    for (int i = 0; i < n; i++) {
+        if (y[i] >= 0) dy[i] = 1;
+        else dy[i] = 0;
+    }
+
+    return dy;
+}
+
+
+float _sum_CPU(float* a, int n) {
+    float sum = 0;
+    for (int i = 0; i < n; i++)
+        sum += a[i];
+
+    return sum;
+}
+
+
+// vector<float*> _fw_CPU(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
+//                         int hidden_size, int out_size) {
+//     // TODO
 // }
-
-
 

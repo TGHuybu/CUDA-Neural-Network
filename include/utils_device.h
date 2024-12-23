@@ -14,6 +14,36 @@
     }\
 }
 
+struct GpuTimer {
+	cudaEvent_t start;
+	cudaEvent_t stop;
+
+	GpuTimer() {
+		cudaEventCreate(&start);
+		cudaEventCreate(&stop);
+	}
+
+	~GpuTimer() {
+		cudaEventDestroy(start);
+		cudaEventDestroy(stop);
+	}
+
+	void Start() {
+		cudaEventRecord(start,0);
+		cudaEventSynchronize(start);
+	}
+
+	void Stop() {
+		cudaEventRecord(stop, 0);
+	}
+
+	float Elapsed() {
+		float elapsed;
+		cudaEventSynchronize(stop);
+		cudaEventElapsedTime(&elapsed, start, stop);
+		return elapsed;
+	}
+};
 
 void device_info();
 
@@ -22,5 +52,8 @@ __global__ void _matmul_GPU(float*, float*, float*, int, int, int);
 __global__ void _ReLU_GPU(float*, int);
 
 __global__ void _softmax_GPU(float *, float *, int , int ) ;
+
+vector<float*> _fw_GPU(vector<float>, vector<vector<float>>, int, int, 
+                        int, int);
 
 #endif

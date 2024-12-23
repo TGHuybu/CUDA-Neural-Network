@@ -121,3 +121,67 @@ __global__ void _softmax_GPU(float *input, float *output, int batch_size, int ou
     output[idx] = exp(input[batch_idx * output_size + output_idx] - local_max) / exp_sum;
 }
 
+
+vector<float*> _fw_GPU(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
+                        int hidden_size, int out_size) {
+
+    vector<float*> outs;
+    outs.push_back(X.data());
+
+    for (int i = 0; i < Ws.size(); i++) {
+        if (i != 0) n_features = hidden_size;
+        if (i == Ws.size() - 1) hidden_size = out_size;
+
+        int n_inputs_per_stream = (n_samples * n_features);
+        int n_outputs_per_stream = (n_samples * hidden_size);
+ 
+        vector<float> W = Ws[i];
+        float *X = outs[i];
+        float *out;
+        CHECK(cudaMallocHost(&out, n_outputs_per_stream * sizeof(float)));
+
+        // Allocate memory on device
+        float *d_X, *d_W, *d_out;
+        CHECK(cudaMalloc(&d_X, n_inputs_per_stream * sizeof(float)));
+        CHECK(cudaMalloc(&d_W, W.size() * sizeof(float)));
+        CHECK(cudaMalloc(&d_out, n_outputs_per_stream * sizeof(float)));
+
+        // Copy memory: host-to-device
+        CHECK(cudaMemcpy(
+            d_X, X, n_inputs_per_stream * sizeof(float), 
+            cudaMemcpyHostToDevice
+        ));
+        CHECK(cudaMemcpy(d_W, W.data(), W.size() * sizeof(float), cudaMemcpyHostToDevice));
+
+        // Define block and grid size
+        dim3 blockSize(16, 16);
+        dim3 gridSize((hidden_size + blockSize.x - 1) / blockSize.x,
+                        (n_samples + blockSize.y - 1) / blockSize.y);
+
+        // Multiply
+        _matmul_GPU<<<gridSize, blockSize>>>(d_X, d_W, d_out, n_samples, n_features, hidden_size);
+
+        // Activation function
+        dim3 blockSize_1D(256);
+        dim3 gridSize_1D((n_samples * hidden_size + blockSize_1D.x - 1) / 256);
+        if (i == Ws.size() - 1)
+            _softmax_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, d_out, n_samples, out_size);
+        else
+            _ReLU_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, n_samples * hidden_size);
+
+        // Copy memory: device-to-host
+        CHECK(cudaMemcpy(
+            out, d_out, n_outputs_per_stream * sizeof(float), 
+            cudaMemcpyDeviceToHost
+        ));
+
+        outs.push_back(out);
+
+        // Free device memory
+        CHECK(cudaFree(d_X));
+        CHECK(cudaFree(d_W));
+        CHECK(cudaFree(d_out));
+    }
+
+    return outs;
+}

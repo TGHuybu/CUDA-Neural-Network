@@ -1,68 +1,141 @@
 #include "nn.h"
 
 
-vector<float*> forward(vector<float> X, vector<vector<float>> Ws, 
-                        int n_samples, int n_features, int hidden_size, int out_size, bool use_gpu) {
-    
-    // Convert to pointer for ease of handling
-    float *X_in = X.data();
-    
-    // Save outputs of each layer
+vector<float> one_hot(vector<int> y, int n_samples, int n_classes) {
+    vector<float> onehots(n_samples * n_classes, 0);
+    for (int i = 0; i < y.size(); i++) {
+        int idx = n_classes * i + y.at(i);
+        onehots[idx] = 1.0;
+    }
+
+    return onehots;
+}
+
+
+float loss(float* y_pred, float* y_true, int n_samples, int n_classes) {
+    float* abs_err = _add_CPU(y_pred, y_true, n_samples * n_classes, -1);
+    float cee = _sum_CPU(abs_err, n_samples * n_classes);
+    return (-1 * cee) / n_samples;
+}
+
+
+vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
+                        int hidden_size, int out_size, bool use_gpu) {
+
     vector<float*> outs;
-    outs.push_back(X_in);
-
-    for (int i = 0; i < Ws.size(); i++) {
-        if (i != 0) n_features = hidden_size;
-        if (i == Ws.size() - 1) hidden_size = out_size;
-
-        vector<float> W = Ws[i];
-        float *out = new float[n_samples * hidden_size];
-        cout << n_samples * hidden_size << endl;
-
-        if (use_gpu) {
-            // Allocate memory on device
-            float *d_X, *d_W, *d_out;
-            CHECK(cudaMalloc(&d_X, n_samples * n_features *sizeof(float)));
-            CHECK(cudaMalloc(&d_W, W.size() * sizeof(float)));
-            CHECK(cudaMalloc(&d_out, n_samples * hidden_size * sizeof(float)));
-
-            // Copy memory: host-to-device
-            CHECK(cudaMemcpy(d_X, X_in, n_samples * n_features * sizeof(float), cudaMemcpyHostToDevice));
-            CHECK(cudaMemcpy(d_W, W.data(), W.size() * sizeof(float), cudaMemcpyHostToDevice));
-
-            // Define block and grid size
-            dim3 blockSize(16, 16);
-            dim3 gridSize((hidden_size + blockSize.x - 1) / blockSize.x,
-                            (n_samples + blockSize.y - 1) / blockSize.y);
-
-            // Multiply
-            _matmul_GPU<<<gridSize, blockSize>>>(d_X, d_W, d_out, n_samples, n_features, hidden_size);
-
-            // Activation function
-            dim3 blockSize_1D(256);
-            dim3 gridSize_1D((n_samples * hidden_size + blockSize_1D.x - 1) / 256);
-            if (i == Ws.size() - 1)
-                _softmax_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, d_out, n_samples, out_size);
-            else
-                _ReLU_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, n_samples * hidden_size);
-
-            // Copy memory: device-to-host
-            CHECK(cudaMemcpy(out, d_out, n_samples * hidden_size * sizeof(float), cudaMemcpyDeviceToHost));
-
-            // Free device memory
-            CHECK(cudaFree(d_X));
-            CHECK(cudaFree(d_W));
-            CHECK(cudaFree(d_out));
-
-        } else {
-            // TODO: CPU forward
-        }
-
-        outs.push_back(out);
-        X_in = out;
+    if (use_gpu) { 
+        outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
+    } else {
+        // TODO: CPU forward
     }
 
     return outs;
+}
+
+void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
+           int hidden_size, int out_size, int max_epoch, float learning_rate, bool use_gpu) {
+
+    cout << "train\n";
+    // Preprocess data
+    int n_samples = X.size();
+    int n_features = X[0].size(); // Number of features in the input data
+
+    // One-hot encoding
+    vector<float> y_onehot = one_hot(y, n_samples, out_size);
+
+    // Flatten input data into 1D vector for compatibility
+    vector<float> X_train(n_samples * n_features);
+    for (int i = 0; i < n_samples; ++i) {
+        copy(X[i].begin(), X[i].end(), X_train.begin() + i * n_features);
+    }
+
+    // Cross-entropy errors
+    vector<float> cees;
+
+    cout << "start\n";
+
+    for (int epoch = 0; epoch < max_epoch; epoch++) {
+        // 1. Forward pass
+        vector<float*> outputs = forward(X_train, Ws, n_samples, n_features, hidden_size, out_size, use_gpu);
+        cout << epoch << endl;
+
+        cout << "d\n";
+        // 2. Delta for the output layer
+        float* final_output = outputs.back();
+        float* final_input = outputs[outputs.size() - 2];
+        float* delta_out = _add_CPU(final_output, y_onehot.data(), n_samples * out_size, -1);
+
+        cout << "g\n";
+        // 3. Gradient for the output layer
+        float* final_input_T = _transpose(final_input, n_samples, hidden_size);
+        float* dOut = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, out_size);
+
+        cout << "ww\n";
+        // 4. Update weights for the output layer
+        float* W_out_updated = _add_CPU(Ws.back().data(), dOut, hidden_size * out_size, -learning_rate);
+        Ws.back().assign(W_out_updated, W_out_updated + hidden_size * out_size);
+        delete[] W_out_updated;
+
+        // Variables for backpropagation
+        int n_input_features = hidden_size;
+        int n_output_features = hidden_size;
+        float* delta_hidden = delta_out;
+
+        cout << "bp\n";
+        // 5. Backpropagate through hidden layers
+        for (int layer = Ws.size() - 2; layer >= 0; --layer) {
+            if (layer == 0) n_input_features = n_features;
+            cout << layer << endl;
+
+            // Get next layer weights
+            vector<float> W_next = Ws[layer + 1];
+            float* W_next_T = _transpose(W_next.data(), n_output_features, n_input_features);
+            cout << "t\n";
+
+            // Get layer outputs and apply ReLU derivative
+            float* layer_output = outputs[layer + 1];
+            float* dReLU = _dReLU_CPU(layer_output, n_samples * n_output_features);
+            cout << "drelu\n";
+
+            // Compute delta for current layer
+            float* delta_hidden_temp = _matmul_CPU(delta_hidden, W_next_T, n_samples, n_output_features, n_input_features);
+            float* delta_hidden_updated = _ewmul_CPU(delta_hidden_temp, dReLU, n_samples * n_input_features);
+
+            delta_hidden = delta_hidden_updated;
+            cout << "delta_hidden\n";
+
+            // Gradient for current layer
+            float* layer_input = outputs[layer];
+            cout << "glaye\n";
+            float* layer_input_T = _transpose(layer_input, n_samples, n_input_features);
+            cout << "glaye\n";
+            float* dHidden = _matmul_CPU(layer_input_T, delta_hidden, n_input_features, n_samples, n_input_features);
+            cout << "glaye\n";
+
+            // Update weights for the current layer
+            float* W_hidden_updated = _add_CPU(Ws[layer].data(), dHidden, n_input_features * n_output_features, -learning_rate);
+            Ws[layer].assign(W_hidden_updated, W_hidden_updated + n_input_features * n_input_features);
+            cout << "descent\n";
+
+            // // Update feature sizes for next iteration
+            // n_output_features = n_input_features;
+            // n_input_features = (layer == 0) ? n_features : hidden_size;
+            // cout << "size\n";
+        }
+
+        // 6. Calculate and log cross-entropy loss
+        float epoch_loss = loss(y_onehot.data(), outputs.back(), n_samples, out_size);
+        cees.push_back(epoch_loss);
+        cout << "Epoch " << epoch + 1 << ": Loss = " << epoch_loss << endl;
+
+        // Free memory for deltas
+        delete[] delta_out;
+
+        // Free output allocations
+        for (float* ptr : outputs) {
+            delete[] ptr;
+        }
+    }
 }
 
 
