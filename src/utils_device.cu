@@ -32,6 +32,46 @@ __global__ void _matmul_GPU(float* A, float* B, float* C, int m, int n, int k) {
     	}
 }
 
+
+__global__ void _tiled_matmul_GPU(float* A, float* B, float* C, int m, int n, int k) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y; 
+    int col = blockIdx.x * blockDim.x + threadIdx.x; 
+
+    float value = 0;
+
+    // Shared memory cho A và B
+    __shared__ float s_A[TILE_WIDTH][TILE_WIDTH];
+    __shared__ float s_B[TILE_WIDTH][TILE_WIDTH];
+
+    for (int tile = 0; tile < (n + TILE_WIDTH - 1) / TILE_WIDTH; tile++)
+    {
+        if (row < m && (tile * TILE_WIDTH + threadIdx.x) < n)
+            s_A[threadIdx.y][threadIdx.x] = A[row * n + tile * TILE_WIDTH + threadIdx.x];
+        else
+            s_A[threadIdx.y][threadIdx.x] = 0.0;
+
+        if ((tile * TILE_WIDTH + threadIdx.y) < n && col < k)
+            s_B[threadIdx.y][threadIdx.x] = B[(tile * TILE_WIDTH + threadIdx.y) * k + col];
+        else
+            s_B[threadIdx.y][threadIdx.x] = 0.0;
+
+        __syncthreads(); 
+
+        for (int i = 0; i < TILE_WIDTH; i++) {
+            value += s_A[threadIdx.y][i] * s_B[i][threadIdx.x];
+        }
+
+        __syncthreads(); 
+    }
+
+    // Ghi kết quả vào ma trận C
+    if (row < m && col < k) {
+        C[row * k + col] = value;
+    }
+    	
+}
+
+
 // void matMul(float* A, float* B, float* C, int m, int n, int k, dim3 blockSize = dim3(1)){
 
 //         float* d_A, * d_B, * d_C;
@@ -132,29 +172,29 @@ vector<float*> _fw_GPU(vector<float> X, vector<vector<float>> Ws, int n_samples,
         if (i != 0) n_features = hidden_size;
         if (i == Ws.size() - 1) hidden_size = out_size;
 
-        int n_inputs_per_stream = (n_samples * n_features);
-        int n_outputs_per_stream = (n_samples * hidden_size);
+        int n_input_elements = (n_samples * n_features);
+        int n_output_elements = (n_samples * hidden_size);
  
         vector<float> W = Ws[i];
         float *X = outs[i];
         float *out;
-        CHECK(cudaMallocHost(&out, n_outputs_per_stream * sizeof(float)));
+        CHECK(cudaMallocHost(&out, n_output_elements * sizeof(float)));
 
         // Allocate memory on device
         float *d_X, *d_W, *d_out;
-        CHECK(cudaMalloc(&d_X, n_inputs_per_stream * sizeof(float)));
+        CHECK(cudaMalloc(&d_X, n_input_elements * sizeof(float)));
         CHECK(cudaMalloc(&d_W, W.size() * sizeof(float)));
-        CHECK(cudaMalloc(&d_out, n_outputs_per_stream * sizeof(float)));
+        CHECK(cudaMalloc(&d_out, n_output_elements * sizeof(float)));
 
         // Copy memory: host-to-device
         CHECK(cudaMemcpy(
-            d_X, X, n_inputs_per_stream * sizeof(float), 
+            d_X, X, n_input_elements * sizeof(float), 
             cudaMemcpyHostToDevice
         ));
         CHECK(cudaMemcpy(d_W, W.data(), W.size() * sizeof(float), cudaMemcpyHostToDevice));
 
         // Define block and grid size
-        dim3 blockSize(16, 16);
+        dim3 blockSize(32, 32);
         dim3 gridSize((hidden_size + blockSize.x - 1) / blockSize.x,
                         (n_samples + blockSize.y - 1) / blockSize.y);
 
@@ -171,7 +211,72 @@ vector<float*> _fw_GPU(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
         // Copy memory: device-to-host
         CHECK(cudaMemcpy(
-            out, d_out, n_outputs_per_stream * sizeof(float), 
+            out, d_out, n_output_elements * sizeof(float), 
+            cudaMemcpyDeviceToHost
+        ));
+
+        outs.push_back(out);
+
+        // Free device memory
+        CHECK(cudaFree(d_X));
+        CHECK(cudaFree(d_W));
+        CHECK(cudaFree(d_out));
+    }
+
+    return outs;
+}
+
+
+vector<float*> _fw_GPU_optim(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
+                        int hidden_size, int out_size) {
+
+    vector<float*> outs;
+    outs.push_back(X.data());
+
+    for (int i = 0; i < Ws.size(); i++) {
+        if (i != 0) n_features = hidden_size;
+        if (i == Ws.size() - 1) hidden_size = out_size;
+
+        int n_input_elements = (n_samples * n_features);
+        int n_output_elements = (n_samples * hidden_size);
+ 
+        vector<float> W = Ws[i];
+        float *X = outs[i];
+        float *out;
+        CHECK(cudaMallocHost(&out, n_output_elements * sizeof(float)));
+
+        // Allocate memory on device
+        float *d_X, *d_W, *d_out;
+        CHECK(cudaMalloc(&d_X, n_input_elements * sizeof(float)));
+        CHECK(cudaMalloc(&d_W, W.size() * sizeof(float)));
+        CHECK(cudaMalloc(&d_out, n_output_elements * sizeof(float)));
+
+        // Copy memory: host-to-device
+        CHECK(cudaMemcpy(
+            d_X, X, n_input_elements * sizeof(float), 
+            cudaMemcpyHostToDevice
+        ));
+        CHECK(cudaMemcpy(d_W, W.data(), W.size() * sizeof(float), cudaMemcpyHostToDevice));
+
+        // Define block and grid size
+        dim3 blockSize(32, 32);
+        dim3 gridSize((hidden_size + blockSize.x - 1) / blockSize.x,
+                        (n_samples + blockSize.y - 1) / blockSize.y);
+
+        // Multiply
+        _tiled_matmul_GPU<<<gridSize, blockSize>>>(d_X, d_W, d_out, n_samples, n_features, hidden_size);
+
+        // Activation function
+        dim3 blockSize_1D(256);
+        dim3 gridSize_1D((n_samples * hidden_size + blockSize_1D.x - 1) / 256);
+        if (i == Ws.size() - 1)
+            _softmax_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, d_out, n_samples, out_size);
+        else
+            _ReLU_GPU<<<gridSize_1D, blockSize_1D>>>(d_out, n_samples * hidden_size);
+
+        // Copy memory: device-to-host
+        CHECK(cudaMemcpy(
+            out, d_out, n_output_elements * sizeof(float), 
             cudaMemcpyDeviceToHost
         ));
 

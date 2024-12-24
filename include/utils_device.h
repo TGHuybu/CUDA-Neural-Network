@@ -3,6 +3,7 @@
 
 #include "libs.h"
 
+#define TILE_WIDTH 32
 
 #define CHECK(call) { \
     const cudaError_t error = call; \
@@ -49,11 +50,16 @@ void device_info();
 
 __global__ void _matmul_GPU(float*, float*, float*, int, int, int);
 
+__global__ void _tiled_matmul_GPU(float*, float*, float*, int, int, int);
+
 __global__ void _ReLU_GPU(float*, int);
 
 __global__ void _softmax_GPU(float *, float *, int , int ) ;
 
 vector<float*> _fw_GPU(vector<float>, vector<vector<float>>, int, int, 
+                        int, int);
+
+vector<float*> _fw_GPU_optim(vector<float>, vector<vector<float>>, int, int, 
                         int, int);
 
 #endif

@@ -20,23 +20,30 @@ float loss(float* y_pred, float* y_true, int n_samples, int n_classes) {
 
 
 vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
-                        int hidden_size, int out_size, bool use_gpu) {
+                        int hidden_size, int out_size, bool use_gpu, bool optimize) {
 
     vector<float*> outs;
     if (use_gpu) { 
-        outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
+        if (optimize) 
+            outs = _fw_GPU_optim(X, Ws, n_samples, n_features, hidden_size, out_size);
+        else 
+            outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
     } else {
+        //-- Forward using CPU
+
         outs.push_back(X.data());
 
+        int layer_in_size = n_features;
+        int layer_out_size = hidden_size;
         for (int i = 0; i < Ws.size(); i++) {
-            if (i != 0) n_features = hidden_size;
-            if (i == Ws.size() - 1) hidden_size = out_size;
+            if (i != 0) layer_in_size = hidden_size;
+            if (i == Ws.size() - 1) layer_out_size = out_size;
     
             vector<float> W = Ws[i];
             float* X_in = outs[i];
 
             // Multiply
-            float* out = _matmul_CPU(X_in, W.data(), n_samples, n_features, hidden_size);
+            float* out = _matmul_CPU(X_in, W.data(), n_samples, layer_in_size, layer_out_size);
 
             // Activation function
             if (i == Ws.size() - 1)
@@ -50,6 +57,23 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
     return outs;
 }
+
+
+// vector<float*> _backward(vector<float*> outputs, vector<float> onehot_label, vector<vector<float>> Ws, 
+//                         int n_samples, int n_features, 
+//                         int hidden_size, int out_size) {
+//     // 
+
+//     // Classification error
+//     float* final_output = outputs.back();
+//     float* final_input = outputs[outputs.size() - 2];
+//     float* classification_error = _add_CPU(final_output, y_onehot.data(), n_samples * out_size, -1);
+
+//     // dOut = (activations[-2].T @ delta_out) / activations[-2].shape[0]
+//     float* final_input_T = _transpose(final_input, n_samples, hidden_size);
+//     float* dOut = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, out_size);
+// }
+
 
 void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
            int hidden_size, int out_size, int max_epoch, float learning_rate, bool use_gpu) {

@@ -8,7 +8,7 @@ vector<float> one_hot(vector<int>, int, int);
 float loss(float*, float*, int, int);
 
 vector<float*> forward(vector<float>, vector<vector<float>>, 
-                        int, int, int, int, bool=true);
+                        int, int, int, int, bool=true, bool=true);
 
 void train(vector<vector<float>>, vector<int>, vector<vector<float>> &,
            int, int, int, float, bool);

@@ -5,7 +5,7 @@
 int main() {
     
     //-- Set up 
-    const int batch_size = 32;
+    // const int batch_size = 32;
     const int input_size = 784;
     const int hidden_size = 128;
     const int output_size = 10;
@@ -68,6 +68,7 @@ int main() {
         cerr << "ERROR: " << e.what() << endl;
         return 1;
     }
+    cout << endl;
 
     // Flatten input batch
     vector<float> X(num_img_train * input_size);
@@ -79,7 +80,7 @@ int main() {
     GpuTimer timer;
     timer.Start();
     vector<float*> outputs_cpu = forward(
-        X, Ws, num_img_train, input_size, hidden_size, output_size, false
+        X, Ws, num_img_train, input_size, hidden_size, output_size, false, false
     );
     timer.Stop();
     float time = timer.Elapsed();
@@ -87,16 +88,29 @@ int main() {
 
     timer.Start();
     vector<float*> outputs_gpu = forward(
-        X, Ws, num_img_train, input_size, hidden_size, output_size, true
+        X, Ws, num_img_train, input_size, hidden_size, output_size, true, false
     );
     timer.Stop();
     time = timer.Elapsed();
     printf("FORWARD TIME GPU: %f ms\n\n", time);
 
+    timer.Start();
+    vector<float*> outputs_gpu_optim = forward(
+        X, Ws, num_img_train, input_size, hidden_size, output_size, true, true
+    );
+    timer.Stop();
+    time = timer.Elapsed();
+    printf("FORWARD TIME GPU (OPTIMIZED): %f ms\n\n", time);
+
     float err = 0;
-    for (int i = 0; i < num_img_train * output_size; i++) {
-        err += outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]
-    }
+    for (int i = 0; i < num_img_train * output_size; i++)
+        err += abs(outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]);
+    cout << "CPU - GPU: " << err / (num_img_train * output_size) << endl;
+
+    err = 0;
+    for (int i = 0; i < num_img_train * output_size; i++)
+        err += abs(outputs_cpu.at(3)[i] - outputs_gpu_optim.at(3)[i]);
+    cout << "CPU - GPU (optimized): " << err / (num_img_train * output_size) << endl;
 
     //-- Test train
     // train(trainImages, trainLabels, Ws,
