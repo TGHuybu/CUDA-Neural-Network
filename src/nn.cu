@@ -24,10 +24,18 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
     vector<float*> outs;
     if (use_gpu) { 
-        if (optimize) 
+        if (optimize) {
             outs = _fw_GPU_optim(X, Ws, n_samples, n_features, hidden_size, out_size);
-        else 
+
+            // Set first output as input data
+            outs[0] = X.data();
+            // cout << "in:" << outs.at(0)[0] << endl;
+        } else 
             outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
+
+            // Set first output as input data
+            outs[0] = X.data();
+            // cout << "in:" << outs.at(0)[0] << endl;
     } else {
         //-- Forward using CPU
 
@@ -59,125 +67,101 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 }
 
 
-// vector<float*> _backward(vector<float*> outputs, vector<float> onehot_label, vector<vector<float>> Ws, 
-//                         int n_samples, int n_features, 
-//                         int hidden_size, int out_size) {
-//     // 
+vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws, 
+                        vector<float> y_onehot, int n_samples, int n_features, 
+                        int hidden_size, int n_classes) {
 
-//     // Classification error
-//     float* final_output = outputs.back();
-//     float* final_input = outputs[outputs.size() - 2];
-//     float* classification_error = _add_CPU(final_output, y_onehot.data(), n_samples * out_size, -1);
+    vector<float*> gradients(Ws.size());
 
-//     // dOut = (activations[-2].T @ delta_out) / activations[-2].shape[0]
-//     float* final_input_T = _transpose(final_input, n_samples, hidden_size);
-//     float* dOut = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, out_size);
-// }
+    // Final output layer error
+    // delta_out = final_output - y_onehot
+    float* final_output = outs.back();
+    float* delta_out = _add_CPU(final_output, y_onehot.data(), n_samples * n_classes, -1); 
+
+    // Final layer gradient
+    // TODO: divide grad_out by n_samples
+    float* final_input = outs[outs.size() - 2];  // Input to the final layer
+    float* final_input_T = _transpose(final_input, n_samples, hidden_size);
+    float* grad_out = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, n_classes);
+
+    // Store gradient
+    gradients.back() = grad_out; 
+
+    free(final_input_T);
+    free(grad_out);
+
+    // BEGIN BACKPROPAGATION
+    float* delta_hidden = delta_out;
+    int layer_input_size = hidden_size;
+    int layer_output_size = hidden_size;
+    for (int layer = Ws.size() - 2; layer > -1; layer--) {
+
+        if (layer == 0) layer_input_size = n_features;
+        cout << "layer: " << layer << endl;
+
+        // Current layer input + outputs
+        float* layer_input = outs[layer];
+        float* layer_output = outs[layer + 1];
+
+        // Obtain next layer's weights, input + output sizes
+        int next_layer = layer + 1;
+        vector<float> W_next = Ws[next_layer];
+        int next_layer_input_size = layer_output_size;
+        int next_layer_output_size = hidden_size;
+        if (next_layer == Ws.size() - 1) next_layer_output_size = n_classes;
+
+        // ReLU derivative
+        float* dReLU = _dReLU_CPU(layer_output, n_samples * layer_output_size);
+
+        // Transpose next layer's weights
+        float* W_next_T = _transpose(W_next.data(), next_layer_input_size, next_layer_output_size);
+
+        // Current layer's output error
+        float* delta_hidden_temp = _matmul_CPU(delta_hidden, W_next_T, n_samples, next_layer_output_size, next_layer_input_size);
+        float* delta_hidden_new = _ewmul_CPU(delta_hidden_temp, dReLU, n_samples * layer_output_size);
+
+        free(delta_hidden);
+        free(delta_hidden_temp);
+        free(dReLU);
+
+        // Update output error
+        delta_hidden = delta_hidden_new;
+
+        // TODO: divide grad_hidden by n_samples
+        float* layer_input_T = _transpose(layer_input, n_samples, layer_input_size);
+        float* grad_hidden = _matmul_CPU(layer_input_T, delta_hidden, layer_input_size, n_samples, layer_output_size);
+
+        gradients[layer] = grad_hidden; // Store gradient
+        
+        free(layer_input_T);
+        free(W_next_T);
+    }
+
+    free(delta_hidden); // Free memory for the last delta
+    return gradients;
+}
 
 
 void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
-           int hidden_size, int out_size, int max_epoch, float learning_rate, bool use_gpu) {
-
-    cout << "train\n";
-    // Preprocess data
-    int n_samples = X.size();
-    int n_features = X[0].size(); // Number of features in the input data
+           int hidden_size, int n_classes, int max_epoch, float learning_rate, bool use_gpu) {
+    
+    int sample_size = X.size();
+    int n_data_features = X.at(0).size();
 
     // One-hot encoding
-    vector<float> y_onehot = one_hot(y, n_samples, out_size);
+    vector<float> y_onehot = one_hot(y, sample_size, n_classes);
 
-    // Flatten input data into 1D vector for compatibility
-    vector<float> X_train(n_samples * n_features);
-    for (int i = 0; i < n_samples; ++i) {
-        copy(X[i].begin(), X[i].end(), X_train.begin() + i * n_features);
-    }
-
-    // Cross-entropy errors
-    vector<float> cees;
-
-    cout << "start\n";
+    // Flatten input data
+    vector<float> X_train(sample_size * n_data_features);
+    for (int i = 0; i < sample_size; ++i)
+        copy(X[i].begin(), X[i].end(), X_train.begin() + i * n_data_features);
 
     for (int epoch = 0; epoch < max_epoch; epoch++) {
-        // 1. Forward pass
-        vector<float*> outputs = forward(X_train, Ws, n_samples, n_features, hidden_size, out_size, use_gpu);
-        cout << epoch << endl;
-
-        cout << "d\n";
-        // 2. Delta for the output layer
-        float* final_output = outputs.back();
-        float* final_input = outputs[outputs.size() - 2];
-        float* delta_out = _add_CPU(final_output, y_onehot.data(), n_samples * out_size, -1);
-
-        cout << "g\n";
-        // 3. Gradient for the output layer
-        float* final_input_T = _transpose(final_input, n_samples, hidden_size);
-        float* dOut = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, out_size);
-
-        cout << "ww\n";
-        // 4. Update weights for the output layer
-        float* W_out_updated = _add_CPU(Ws.back().data(), dOut, hidden_size * out_size, -learning_rate);
-        Ws.back().assign(W_out_updated, W_out_updated + hidden_size * out_size);
-        delete[] W_out_updated;
-
-        // Variables for backpropagation
-        int n_input_features = hidden_size;
-        int n_output_features = hidden_size;
-        float* delta_hidden = delta_out;
-
-        cout << "bp\n";
-        // 5. Backpropagate through hidden layers
-        for (int layer = Ws.size() - 2; layer >= 0; --layer) {
-            if (layer == 0) n_input_features = n_features;
-            cout << layer << endl;
-
-            // Get next layer weights
-            vector<float> W_next = Ws[layer + 1];
-            float* W_next_T = _transpose(W_next.data(), n_output_features, n_input_features);
-            cout << "t\n";
-
-            // Get layer outputs and apply ReLU derivative
-            float* layer_output = outputs[layer + 1];
-            float* dReLU = _dReLU_CPU(layer_output, n_samples * n_output_features);
-            cout << "drelu\n";
-
-            // Compute delta for current layer
-            float* delta_hidden_temp = _matmul_CPU(delta_hidden, W_next_T, n_samples, n_output_features, n_input_features);
-            float* delta_hidden_updated = _ewmul_CPU(delta_hidden_temp, dReLU, n_samples * n_input_features);
-
-            delta_hidden = delta_hidden_updated;
-            cout << "delta_hidden\n";
-
-            // Gradient for current layer
-            float* layer_input = outputs[layer];
-            cout << "glaye\n";
-            float* layer_input_T = _transpose(layer_input, n_samples, n_input_features);
-            cout << "glaye\n";
-            float* dHidden = _matmul_CPU(layer_input_T, delta_hidden, n_input_features, n_samples, n_input_features);
-            cout << "glaye\n";
-
-            // Update weights for the current layer
-            float* W_hidden_updated = _add_CPU(Ws[layer].data(), dHidden, n_input_features * n_output_features, -learning_rate);
-            Ws[layer].assign(W_hidden_updated, W_hidden_updated + n_input_features * n_input_features);
-            cout << "descent\n";
-
-            // // Update feature sizes for next iteration
-            // n_output_features = n_input_features;
-            // n_input_features = (layer == 0) ? n_features : hidden_size;
-            // cout << "size\n";
-        }
-
-        // 6. Calculate and log cross-entropy loss
-        float epoch_loss = loss(y_onehot.data(), outputs.back(), n_samples, out_size);
-        cees.push_back(epoch_loss);
-        cout << "Epoch " << epoch + 1 << ": Loss = " << epoch_loss << endl;
-
-        // Free memory for deltas
-        delete[] delta_out;
-
-        // Free output allocations
-        for (float* ptr : outputs) {
-            delete[] ptr;
-        }
+        // Forward
+        vector<float*> outs = forward(X_train, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, false);
+        cout << outs.size() << endl;
+        cout << "EPOCH " << epoch << " calc grads...\n";
+        vector<float*> grads = backward(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes);
     }
 }
 
