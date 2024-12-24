@@ -7,5 +7,6 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <random>
+#include <cmath>
 
 using namespace std;

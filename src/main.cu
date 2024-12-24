@@ -7,7 +7,7 @@ int main() {
     //-- Set up 
     // const int batch_size = 32;
     const int input_size = 784;
-    const int hidden_size = 128;
+    const int hidden_size = 25;
     const int output_size = 10;
 
     //-- Init weights
@@ -115,7 +115,7 @@ int main() {
     //-- Test train
     cout << "train\n";
     train(trainImages, trainLabels, Ws,
-           hidden_size, output_size, 3, 0.05, true);
+           hidden_size, output_size, 10, 0.05, true);
 
     return 0;
 }

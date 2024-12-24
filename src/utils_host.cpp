@@ -66,7 +66,7 @@ void init_param(vector<float> &W1, vector<float> &b1,
 }
 
 
-float* _transpose(float *A, int n_rows, int n_cols) {
+float* _transpose_CPU(float *A, int n_rows, int n_cols) {
     float* A_T = new float[n_rows * n_cols];
     for (int i = 0; i < n_rows; i++) {
         for (int j = 0; j < n_cols; j++)
@@ -112,6 +112,15 @@ float* _matmul_CPU(float* A, float* B, int m, int n, int k) {
     }
 
     return C;
+}
+
+
+float* _scalar_div(float* A, int n, float b) {
+    float* B = new float[n];
+    for (int i = 0; i < n; i++)
+        B[i] = A[i] / n;
+
+    return B;
 }
 
 
@@ -168,3 +177,78 @@ float* _dReLU_CPU(float* y, int n) {
     return dy;
 }
 
+
+vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws, 
+                        vector<float> y_onehot, int n_samples, int n_features, 
+                        int hidden_size, int n_classes) {
+
+    vector<float*> gradients(Ws.size());
+
+    // Final output layer error
+    // delta_out = final_output - y_onehot
+    float* final_output = outs.back();
+    float* delta_out = _add_CPU(final_output, y_onehot.data(), n_samples * n_classes, -1); 
+
+    // Final layer gradient
+    // TODO: divide grad_out by n_samples
+    float* final_input = outs[outs.size() - 2];  // Input to the final layer
+    float* final_input_T = _transpose_CPU(final_input, n_samples, hidden_size);
+    float* grad_out = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, n_classes);
+    grad_out = _scalar_div(grad_out, hidden_size * n_classes, 1);
+
+    // Store gradient
+    gradients.back() = grad_out; 
+
+    free(final_input_T);
+    free(grad_out);
+
+    // BEGIN BACKPROPAGATION
+    float* delta_hidden = delta_out;
+    int layer_input_size = hidden_size;
+    int layer_output_size = hidden_size;
+    for (int layer = Ws.size() - 2; layer > -1; layer--) {
+
+        if (layer == 0) layer_input_size = n_features;
+
+        // Current layer input + outputs
+        float* layer_input = outs[layer];
+        float* layer_output = outs[layer + 1];
+
+        // Obtain next layer's weights, input + output sizes
+        int next_layer = layer + 1;
+        vector<float> W_next = Ws[next_layer];
+        int next_layer_input_size = layer_output_size;
+        int next_layer_output_size = hidden_size;
+        if (next_layer == Ws.size() - 1) next_layer_output_size = n_classes;
+
+        // ReLU derivative
+        float* dReLU = _dReLU_CPU(layer_output, n_samples * layer_output_size);
+
+        // Transpose next layer's weights
+        float* W_next_T = _transpose_CPU(W_next.data(), next_layer_input_size, next_layer_output_size);
+
+        // Current layer's output error
+        float* delta_hidden_temp = _matmul_CPU(delta_hidden, W_next_T, n_samples, next_layer_output_size, next_layer_input_size);
+        float* delta_hidden_new = _ewmul_CPU(delta_hidden_temp, dReLU, n_samples * layer_output_size);
+
+        free(delta_hidden);
+        free(delta_hidden_temp);
+        free(dReLU);
+
+        // Update output error
+        delta_hidden = delta_hidden_new;
+
+        // TODO: divide grad_hidden by n_samples
+        float* layer_input_T = _transpose_CPU(layer_input, n_samples, layer_input_size);
+        float* grad_hidden = _matmul_CPU(layer_input_T, delta_hidden, layer_input_size, n_samples, layer_output_size);
+        grad_hidden = _scalar_div(grad_hidden, layer_input_size * layer_output_size, 1);
+
+        gradients[layer] = grad_hidden; // Store gradient
+        
+        free(layer_input_T);
+        free(W_next_T);
+    }
+
+    free(delta_hidden); // Free memory for the last delta
+    return gradients;
+}
