@@ -30,13 +30,16 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
     vector<float*> outs;
     if (use_gpu) { 
-        if (optimize)
+        if (optimize) {
             outs = _fw_GPU_optim(X, Ws, n_samples, n_features, hidden_size, out_size);
-        else 
+
+            // Set first output as input data
+            outs[0] = X.data();
+        } else 
             outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
 
-        // Set first output as input data
-        outs[0] = X.data();
+            // Set first output as input data
+            outs[0] = X.data();
     } else {
         //-- Forward using CPU
         outs.push_back(X.data());
@@ -88,6 +91,21 @@ void update_weights(vector<vector<float>> &Ws, vector<float*> gradients,
     }
 }
 
+vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws,
+                        vector<float> y_onehot, int n_samples, int n_features,
+                        int hidden_size, int n_classes, bool isDevice){
+  if (isDevice){
+    return _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
+                        vector<float> y_onehot, int n_samples, int n_features,
+                        int hidden_size, int n_classes);
+  }
+  else {
+    return _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
+                        vector<float> y_onehot, int n_samples, int n_features,
+                        int hidden_size, int n_classes);
+  }
+}
+
 
 void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
            int hidden_size, int n_classes, int max_epoch, float learning_rate, bool use_gpu, bool optimize) {
@@ -108,7 +126,7 @@ void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
         vector<float*> outs = forward(X_train, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, true);
 
         // TODO: Branch out to CPU and GPU backward functions
-        vector<float*> grads = _backward_CPU(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes);
+        vector<float*> grads = backward(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes, use_gpu);
 
         // Update weights
         update_weights(Ws, grads, learning_rate);
