@@ -44,11 +44,16 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
         //-- Forward using CPU
         outs.push_back(X.data());
 
+        GpuTimer timer;
+        float time;
+
         int layer_in_size = n_features;
         int layer_out_size = hidden_size;
         for (int i = 0; i < Ws.size(); i++) {
             if (i != 0) layer_in_size = hidden_size;
             if (i == Ws.size() - 1) layer_out_size = out_size;
+
+            timer.Start();
     
             vector<float> W = Ws[i];
             float* X_in = outs[i];
@@ -61,6 +66,11 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
                 out = _softmax_CPU(out, n_samples, out_size);
             else
                 out = _ReLU_CPU(out, n_samples * hidden_size);
+
+            timer.Stop();
+            time = timer.Elapsed();
+            cout << "- layer " << i << " ";
+            printf("forward time: %f ms\n", time);
 
             outs.push_back(out);
         }
