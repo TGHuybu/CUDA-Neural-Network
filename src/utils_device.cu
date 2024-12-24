@@ -27,7 +27,7 @@ __global__ void _transpose_GPU(float* A, float* A_T, int n_rows, int n_cols) {
 }
 
 
-__global__ void _add_CPU(float* A, float* B, float* C, int n, float sign) {
+__global__ void _add_GPU(float* A, float* B, float* C, int n, float sign) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) C[idx] = A[idx] + sign * B[idx]; 
 }

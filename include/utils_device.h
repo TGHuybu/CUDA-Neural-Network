@@ -50,7 +50,7 @@ void device_info();
 
 __global__ void _transpose_GPU(float*, float*, int, int);
 
-__global__ void _add_CPU(float*, float*, float*, int, float);
+__global__ void _add_GPU(float*, float*, float*, int, float);
 
 __global__ void _ewmul_GPU(float*, float*, float*, int);
 
