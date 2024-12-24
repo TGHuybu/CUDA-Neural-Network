@@ -14,11 +14,6 @@ vector<float*> forward(vector<float>, vector<vector<float>>,
                         int, int, int, int, bool=true, bool=true);
 
 void train(vector<vector<float>>, vector<int>, vector<vector<float>> &,
-           int, int, int, float, bool=true);
-
-void forwardCUDA(const float* , const float* , const float* , 
-                 const float* , const float* ,
-                 const float* , const float* ,
-                 float* , int );
+           int, int, int, float, bool=true, bool=true);
                  
 #endif
