@@ -29,7 +29,7 @@ __global__ void _transpose_GPU(float* A, float* A_T, int n_rows, int n_cols) {
 __global__ void relu_derivative(const float* input, float* output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
-        output[idx] = (input[idx] > 0) ? 1.0f : 0.0f;
+        output[idx] = (input[idx] >= 0) ? 1.0f : 0.0f;
     }
 }
 
@@ -312,6 +312,7 @@ vector<float*> _fw_GPU_optim(vector<float> X, vector<vector<float>> Ws, int n_sa
     return outs;
 }
 
+
 vector<float*> _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
                         vector<float> y_onehot, int n_samples, int n_features,
                         int hidden_size, int n_classes) {
@@ -334,7 +335,7 @@ vector<float*> _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
 
     int gridSize_1D = (n_samples * n_classes + blockSize_1D.x - 1) / blockSize_1D.x;
     _add_GPU<<<gridSize_1D, blockSize_1D>>>(d_final_output, d_y_onehot, d_delta_out, n_samples * n_classes, -1);
-
+    
     //-- Final layer gradient
     float* final_input = outs[outs.size() - 2];  // Input to the final layer
     float *d_final_input, *d_final_input_T, *d_grad_out;
@@ -366,39 +367,69 @@ vector<float*> _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
 
         cudaMalloc(&d_layer_input, n_samples * layer_input_size * sizeof(float));
         cudaMalloc(&d_layer_output, n_samples * layer_output_size * sizeof(float));
-
         cudaMemcpy(d_layer_input, layer_input, n_samples * layer_input_size * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_layer_output, layer_output, n_samples * layer_output_size * sizeof(float), cudaMemcpyHostToDevice);
 
+        int next_layer = layer + 1;
+        vector<float>& W_next = Ws[next_layer];
+        int next_layer_input_size = layer_output_size;
+        int next_layer_output_size = hidden_size;
+        if (next_layer == Ws.size() - 1) next_layer_output_size = n_classes;
+        
+        // temp
+        cout << "W_next: ";
+        int wnxtcnt = 0;
+        for (int i = 0; i < W_next.size(); i++) {
+            if (W_next[i] != 0) wnxtcnt += 1;
+        }
+        cout << wnxtcnt << endl;
+        
+        // ReLU derivative
         float* dReLU;
         cudaMalloc(&dReLU, n_samples * layer_output_size * sizeof(float));
         relu_derivative<<<gridSize_1D, blockSize_1D>>>(d_layer_output, dReLU, n_samples * layer_output_size);
 
-        vector<float>& W_next = Ws[layer + 1];
+
         float *d_W_next, *d_W_next_T;
         cudaMalloc(&d_W_next, W_next.size() * sizeof(float));
         cudaMalloc(&d_W_next_T, W_next.size() * sizeof(float));
         cudaMemcpy(d_W_next, W_next.data(), W_next.size() * sizeof(float), cudaMemcpyHostToDevice);
 
-        _transpose_GPU<<<gridSize_1D, blockSize_1D>>>(d_W_next, d_W_next_T, layer_output_size, hidden_size);
+        // Transpose next layer's weights
+        _transpose_GPU<<<gridSize_1D, blockSize_1D>>>(d_W_next, d_W_next_T, next_layer_input_size, next_layer_output_size);
+        
+        // temp
+        float* temp = new float[next_layer_input_size * next_layer_output_size];
+        cudaMemcpy(temp, d_W_next_T, next_layer_input_size * next_layer_output_size * sizeof(float), cudaMemcpyDeviceToHost);
+        int b = 0;
+        for (int i = 0; i < next_layer_input_size * next_layer_output_size; i++) {
+            if (temp[i] != 0) b += 1;
+        }
+        cout << b << endl;
 
+        // Current layer's output error
         float* d_delta_hidden_temp;
         cudaMalloc(&d_delta_hidden_temp, n_samples * layer_input_size * sizeof(float));
-
-        _matmul_GPU<<<gridSize, blockSize>>>(d_delta_hidden, d_W_next_T, d_delta_hidden_temp, n_samples, hidden_size, layer_input_size);
-        _ewmul_GPU<<<gridSize_1D, blockSize_1D>>>(d_delta_hidden_temp, dReLU, d_delta_hidden, n_samples * layer_input_size);
+        _matmul_GPU<<<gridSize, blockSize>>>(d_delta_hidden, d_W_next_T, d_delta_hidden_temp, n_samples, next_layer_output_size, next_layer_input_size);
+        _ewmul_GPU<<<gridSize_1D, blockSize_1D>>>(d_delta_hidden_temp, dReLU, d_delta_hidden, n_samples * layer_output_size);
 
         float* d_layer_input_T;
         cudaMalloc(&d_layer_input_T, layer_input_size * n_samples * sizeof(float));
         _transpose_GPU<<<gridSize_1D, blockSize_1D>>>(d_layer_input, d_layer_input_T, n_samples, layer_input_size);
 
         float* d_grad_hidden;
-        cudaMalloc(&d_grad_hidden, layer_input_size * hidden_size * sizeof(float));
-        _matmul_GPU<<<gridSize, blockSize>>>(d_layer_input_T, d_delta_hidden, d_grad_hidden, layer_input_size, n_samples, hidden_size);
-        scalar_div<<<gridSize_1D, blockSize_1D>>>(d_grad_hidden, layer_input_size * hidden_size, n_samples);
+        cudaMalloc(&d_grad_hidden, layer_input_size * layer_output_size * sizeof(float));
+        _matmul_GPU<<<gridSize, blockSize>>>(d_layer_input_T, d_delta_hidden, d_grad_hidden, layer_input_size, n_samples, layer_output_size);
+        scalar_div<<<gridSize_1D, blockSize_1D>>>(d_grad_hidden, layer_input_size * layer_output_size, n_samples);
 
-        gradients[layer] = new float[layer_input_size * hidden_size];
-        cudaMemcpy(gradients[layer], d_grad_hidden, layer_input_size * hidden_size * sizeof(float), cudaMemcpyDeviceToHost);
+        gradients[layer] = new float[layer_input_size * layer_output_size];
+        cudaMemcpy(gradients[layer], d_grad_hidden, layer_input_size * layer_output_size * sizeof(float), cudaMemcpyDeviceToHost);
+
+        int a = 0;
+        for (int i = 0; i < layer_input_size * layer_output_size; i++) {
+            if (gradients[layer][i] != 0) a += 1;
+        }
+        cout << a << endl;
 
         cudaFree(d_layer_input);
         cudaFree(d_layer_output);

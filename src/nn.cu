@@ -84,8 +84,9 @@ void update_weights(vector<vector<float>> &Ws, vector<float*> gradients,
                     float learning_rate) {
 
     for (int i = 0; i < Ws.size(); i++) {
-        for (int j = 0; j < Ws[i].size(); j++)
+        for (int j = 0; j < Ws[i].size(); j++) {
             Ws[i][j] -= learning_rate * gradients[i][j];
+        }
     }
 }
 

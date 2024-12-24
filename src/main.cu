@@ -74,13 +74,13 @@ int main(int argc, char** argv) {
     }
     cout << endl;
 
-    // Flatten input batch
-    vector<float> X_fwtest(num_img_train * input_size);
-    for (int i = 0; i < num_img_train; ++i) {
-        copy(trainImages[i].begin(), trainImages[i].end(), X_fwtest.begin() + i * input_size);
-    }
+    // // Flatten input batch
+    // vector<float> X_fwtest(num_img_train * input_size);
+    // for (int i = 0; i < num_img_train; ++i) {
+    //     copy(trainImages[i].begin(), trainImages[i].end(), X_fwtest.begin() + i * input_size);
+    // }
 
-    //-- TEST FORWARD RUNTIME
+    // //-- TEST FORWARD RUNTIME
     // GpuTimer timer;
     // float time;
     // timer.Start();
