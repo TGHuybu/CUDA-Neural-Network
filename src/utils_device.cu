@@ -129,7 +129,7 @@ __global__ void _softmax_GPU(float *input, float *output, int batch_size, int ou
     if (batch_idx >= batch_size) return;
 
     // Find maximum value in the row
-    float local_max = -1;   // temp in place of old const? 
+    float local_max = -1;
     for (int i = 0; i < output_size; ++i) {
         local_max = max(local_max, input[batch_idx * output_size + i]);
     }

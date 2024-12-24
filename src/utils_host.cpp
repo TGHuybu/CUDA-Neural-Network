@@ -71,6 +71,7 @@ float* _transpose_CPU(float *A, int n_rows, int n_cols) {
     for (int i = 0; i < n_rows; i++) {
         for (int j = 0; j < n_cols; j++)
             A_T[n_rows * j + i] = A[n_cols * i + j];
+
     }
 
     return A_T;

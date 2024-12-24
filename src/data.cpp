@@ -73,28 +73,3 @@ void readLabels(const string& filename, vector<int>& labels, int& numLabels) {
 
     file.close();
 }
-
-
-// Function to save the image as a PNG using stb_image_write
-/*
-void saveImageAsPNG(const vector<float>& image, const string& filename, int n_rows, int n_cols) {
-    // Use n_rows and n_cols for image dimensions
-    vector<unsigned char> imgData(n_rows * n_cols);
-
-    // Convert float pixel values (0 to 1) to unsigned char (0 to 255)
-    for (int i = 0; i < n_rows; ++i) {  // Iterate over the rows
-        for (int j = 0; j < n_cols; ++j) {  // Iterate over the columns
-            int index = i * n_cols + j;  // Calculate the index in the 1D array
-            imgData[index] = static_cast<unsigned char>(image[index] * 255.0f);  // Convert to unsigned char
-        }
-    }
-
-    // Save the image using stb_image_write as a grayscale PNG
-    int result = stbi_write_png(filename.c_str(), n_cols, n_rows, 1, imgData.data(), n_cols);
-    if (result == 0) {
-        cerr << "Error saving image to file: " << filename << endl;
-    } else {
-        cout << "Image saved as: " << filename << endl;
-    }
-}
-*/

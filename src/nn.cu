@@ -121,18 +121,16 @@ void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
     for (int epoch = 0; epoch < max_epoch; epoch++) {
         // Forward
         vector<float*> outs = forward(X_train, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, false);
-        cout << "EPOCH " << epoch << " calc grads...\n";
 
         // TODO: Branch out to CPU and GPU backward functions
         vector<float*> grads = _backward_CPU(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes);
-        cout << "Weight: " << Ws.back()[0] << ", " << "Grad: " << grads.back()[0] << endl;
         
         // Update weights
         update_weights(Ws, grads, learning_rate);
 
         float cee = loss(outs.back(), y_onehot.data(), sample_size, n_classes);
         float mbe = mean_binary_error(outs.back(), y.data(), sample_size, n_classes);
-        cout << ">>> Epoch " << epoch << " loss: " << cee << "/" << mbe << endl << endl;
+        cout << ">>> Epoch " << epoch << " loss: " << cee << "/" << mbe << endl;
     }
 }
 
