@@ -71,43 +71,45 @@ int main(int argc, char** argv) {
     }
 
     //-- TEST FORWARD RUNTIME
-    GpuTimer timer;
-    float time;
-    timer.Start();
-    vector<float*> outputs_cpu = forward(
-        X_fwtest, Ws, num_img_train, input_size, hidden_size, output_size, false, false
-    );
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("FORWARD TIME CPU: %f ms\n\n", time);
+    // GpuTimer timer;
+    // float time;
+    // timer.Start();
+    // vector<float*> outputs_cpu = forward(
+    //     X_fwtest, Ws, num_img_train, input_size, hidden_size, output_size, false, false
+    // );
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("FORWARD TIME CPU: %f ms\n\n", time);
 
-    timer.Start();
-    vector<float*> outputs_gpu = forward(
-        X_fwtest, Ws, num_img_train, input_size, hidden_size, output_size, true, false
-    );
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("FORWARD TIME GPU: %f ms\n\n", time);
+    // timer.Start();
+    // vector<float*> outputs_gpu = forward(
+    //     X_fwtest, Ws, num_img_train, input_size, hidden_size, output_size, true, false
+    // );
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("FORWARD TIME GPU: %f ms\n\n", time);
 
-    timer.Start();
-    vector<float*> outputs_gpu_optim = forward(
-        X_fwtest, Ws, num_img_train, input_size, hidden_size, output_size, true, true
-    );
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("FORWARD TIME GPU (OPTIMIZED): %f ms\n\n", time);
+    // timer.Start();
+    // vector<float*> outputs_gpu_optim = forward(
+    //     X_fwtest, Ws, num_img_train, input_size, hidden_size, output_size, true, true
+    // );
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("FORWARD TIME GPU (OPTIMIZED): %f ms\n\n", time);
 
-    float err = 0;
-    for (int i = 0; i < num_img_train * output_size; i++)
-        err += abs(outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]);
-    cout << "-- Mean error CPU - GPU: " << err / (num_img_train * output_size) << endl;
+    // float err = 0;
+    // for (int i = 0; i < num_img_train * output_size; i++)
+    //     err += abs(outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]);
+    // cout << "-- Mean error CPU - GPU: " << err / (num_img_train * output_size) << endl;
 
-    err = 0;
-    for (int i = 0; i < num_img_train * output_size; i++)
-        err += abs(outputs_cpu.at(3)[i] - outputs_gpu_optim.at(3)[i]);
-    cout << "-- Mean error CPU - GPU (optimized): " << err / (num_img_train * output_size) << endl;
+    // err = 0;
+    // for (int i = 0; i < num_img_train * output_size; i++)
+    //     err += abs(outputs_cpu.at(3)[i] - outputs_gpu_optim.at(3)[i]);
+    // cout << "-- Mean error CPU - GPU (optimized): " << err / (num_img_train * output_size) << endl;
 
     //-- CPU train
+    GpuTimer timer;
+    float time;
     cout << "\nCPU Train start...\n";
     cout << "-- number of epochs: " << max_epoch << endl;
     timer.Start();
@@ -118,6 +120,7 @@ int main(int argc, char** argv) {
     printf("TRAIN TIME: %f ms\n\n", time);
 
     //-- GPU train
+    
     cout << "\nGPU Train start...\n";
     cout << "-- number of epochs: " << max_epoch << endl;
     timer.Start();
