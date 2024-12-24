@@ -30,13 +30,14 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
     vector<float*> outs;
     if (use_gpu) { 
-        if (optimize) 
+        if (optimize) {
             outs = _fw_GPU_optim(X, Ws, n_samples, n_features, hidden_size, out_size);
-        else 
+            outs[0] = X.data();
+        } else {
             outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
+            outs[0] = X.data();
+        }
 
-        // Set first output as input data
-        outs[0] = X.data();
     } else {
         //-- Forward using CPU
         outs.push_back(X.data());
@@ -116,7 +117,7 @@ void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
 
     for (int epoch = 0; epoch < max_epoch; epoch++) {
         // Forward
-        vector<float*> outs = forward(X_train, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, true);
+        vector<float*> outs = forward(X_train, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, optimize);
 
         // TODO: Branch out to CPU and GPU backward functions
         vector<float*> grads = backward(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes, use_gpu);

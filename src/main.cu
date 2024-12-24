@@ -4,10 +4,10 @@
 
 int main(int argc, char** argv) {
     // hidden_size n_epoch lr
-    if (argc != 4) {
+    if (argc != 5) {
         cout << argc << endl;
         cout << "ERROR: invoke the program as\n";
-        cout << ">>> ./main <#-neurons> <#-epochs> <learning-rate>\n";
+        cout << ">>> ./main <#-neurons> <#-epochs> <learning-rate> <mode>\n";
         return 0;
     }
 
@@ -17,6 +17,16 @@ int main(int argc, char** argv) {
     const int output_size = 10;
     const int max_epoch = atoi(argv[2]);
     const float learning_rate = atof(argv[3]);
+
+    bool use_gpu = true, optimize = true;
+    int mode = atoi(argv[4]);
+    if (mode == 1) {
+        use_gpu = false;
+        optimize = false;
+    } else if (mode == 2) {
+        use_gpu = true;
+        optimize = false;
+    }
 
     cout << "-- # neurons: " << hidden_size << endl;
     cout << "-- # epochs: " << max_epoch << endl;
@@ -110,35 +120,15 @@ int main(int argc, char** argv) {
     //-- CPU train
     GpuTimer timer;
     float time;
-    cout << "\nCPU Train start...\n";
+    cout << "\nTrain start...\n";
     cout << "-- number of epochs: " << max_epoch << endl;
     timer.Start();
     train(trainImages, trainLabels, Ws,
-           hidden_size, output_size, max_epoch, learning_rate, false, false);
+           hidden_size, output_size, max_epoch, learning_rate, use_gpu, optimize);
     timer.Stop();
     time = timer.Elapsed();
     printf("TRAIN TIME: %f ms\n\n", time);
 
-    //-- GPU train
-    
-    cout << "\nGPU Train start...\n";
-    cout << "-- number of epochs: " << max_epoch << endl;
-    timer.Start();
-    train(trainImages, trainLabels, Ws,
-           hidden_size, output_size, max_epoch, learning_rate, true, false);
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("TRAIN TIME: %f ms\n\n", time);
-    
-    //-- CPU train (optimized)
-    cout << "\nGPU Optimized Train start...\n";
-    cout << "-- number of epochs: " << max_epoch << endl;
-    timer.Start();
-    train(trainImages, trainLabels, Ws,
-           hidden_size, output_size, max_epoch, learning_rate, true, true);
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("TRAIN TIME: %f ms\n\n", time);
 
     return 0;
 }
