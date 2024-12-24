@@ -12,15 +12,38 @@ vector<float> one_hot(vector<int> y, int n_samples, int n_classes) {
 }
 
 
+float mean_binary_error(float* y_pred, int* y_true, int n_samples, int n_classes) {
+    int error_count = 0;
+
+    for (int i = 0; i < n_samples; i++) {
+        // Find the predicted class
+        int predicted_class = 0;
+        float max_prob = y_pred[i * n_classes];
+        for (int j = 1; j < n_classes; j++) {
+            if (y_pred[i * n_classes + j] > max_prob) {
+                max_prob = y_pred[i * n_classes + j];
+                predicted_class = j;
+            }
+        }
+
+        // Compare with the true class
+        if (predicted_class != y_true[i])
+            error_count++;
+    }
+
+    return (static_cast<float>(error_count) / n_samples) * 100.0f;
+}
+
+
+
 float loss(float* y_pred, float* y_true, int n_samples, int n_classes) {
     // log(y_pred)
     float* log_y_pred = new float[n_samples * n_classes];
     for (int i = 0; i < n_samples * n_classes; i++) {
-        if (y_pred[i] < 0) cout << y_pred[i] << endl;
-        log_y_pred[i] = log(y_pred[i]);
+        log_y_pred[i] = log(fmax(y_pred[i], 1e-7));
     }
 
-    float* temp = _ewmul_CPU(y_pred, y_true, n_samples * n_classes);
+    float* temp = _ewmul_CPU(log_y_pred, y_true, n_samples * n_classes);
     float cee = _sum_CPU(temp, n_samples * n_classes);
     return (-1 * cee) / n_samples;
 }
@@ -108,7 +131,8 @@ void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
         update_weights(Ws, grads, learning_rate);
 
         float cee = loss(outs.back(), y_onehot.data(), sample_size, n_classes);
-        cout << ">>> Epoch " << epoch << " loss: " << cee << endl << endl;
+        float mbe = mean_binary_error(outs.back(), y.data(), sample_size, n_classes);
+        cout << ">>> Epoch " << epoch << " loss: " << cee << "/" << mbe << endl << endl;
     }
 }
 

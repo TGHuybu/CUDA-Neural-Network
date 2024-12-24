@@ -115,7 +115,7 @@ int main() {
     //-- Test train
     cout << "train\n";
     train(trainImages, trainLabels, Ws,
-           hidden_size, output_size, 10, 0.05, true);
+           hidden_size, output_size, 10, 0.3, true);
 
     return 0;
 }
