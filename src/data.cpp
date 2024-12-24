@@ -72,8 +72,4 @@ void readLabels(const string& filename, vector<int>& labels, int& numLabels) {
     }
 
     file.close();
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 7a83e604914487293214df2b1ebf5b54151e3d16

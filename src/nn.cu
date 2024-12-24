@@ -94,16 +94,12 @@ void update_weights(vector<vector<float>> &Ws, vector<float*> gradients,
 vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws,
                         vector<float> y_onehot, int n_samples, int n_features,
                         int hidden_size, int n_classes, bool isDevice){
-  if (isDevice){
-    return _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
-                        vector<float> y_onehot, int n_samples, int n_features,
-                        int hidden_size, int n_classes);
-  }
-  else {
-    return _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
-                        vector<float> y_onehot, int n_samples, int n_features,
-                        int hidden_size, int n_classes);
-  }
+    if (isDevice){
+        return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, hidden_size, n_classes);
+    }
+    else {
+        return _backward_CPU(outs, Ws, y_onehot, n_samples, n_features, hidden_size, n_classes);
+    }
 }
 
 
