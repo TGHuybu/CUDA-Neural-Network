@@ -71,6 +71,7 @@ float* _transpose_CPU(float *A, int n_rows, int n_cols) {
     for (int i = 0; i < n_rows; i++) {
         for (int j = 0; j < n_cols; j++)
             A_T[n_rows * j + i] = A[n_cols * i + j];
+
     }
 
     return A_T;
@@ -118,7 +119,7 @@ float* _matmul_CPU(float* A, float* B, int m, int n, int k) {
 float* _scalar_div(float* A, int n, float b) {
     float* B = new float[n];
     for (int i = 0; i < n; i++)
-        B[i] = A[i] / n;
+        B[i] = A[i] / b;
 
     return B;
 }
@@ -194,7 +195,7 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
     float* final_input = outs[outs.size() - 2];  // Input to the final layer
     float* final_input_T = _transpose_CPU(final_input, n_samples, hidden_size);
     float* grad_out = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, n_classes);
-    grad_out = _scalar_div(grad_out, hidden_size * n_classes, 1);
+    grad_out = _scalar_div(grad_out, hidden_size * n_classes, n_samples);
 
     // Store gradient
     gradients.back() = grad_out; 
@@ -241,7 +242,7 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
         // TODO: divide grad_hidden by n_samples
         float* layer_input_T = _transpose_CPU(layer_input, n_samples, layer_input_size);
         float* grad_hidden = _matmul_CPU(layer_input_T, delta_hidden, layer_input_size, n_samples, layer_output_size);
-        grad_hidden = _scalar_div(grad_hidden, layer_input_size * layer_output_size, 1);
+        grad_hidden = _scalar_div(grad_hidden, layer_input_size * layer_output_size, n_samples);
 
         gradients[layer] = grad_hidden; // Store gradient
         

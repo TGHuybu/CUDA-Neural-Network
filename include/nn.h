@@ -13,12 +13,11 @@ float loss(float*, float*, int, int);
 vector<float*> forward(vector<float>, vector<vector<float>>, 
                         int, int, int, int, bool=true, bool=true);
 
-void train(vector<vector<float>>, vector<int>, vector<vector<float>> &,
-           int, int, int, float, bool=true);
+vector<float*> backward(vector<float*> , vector<vector<float>> ,
+                        vector<float> , int , int ,
+                        int , int , bool );
 
-void forwardCUDA(const float* , const float* , const float* , 
-                 const float* , const float* ,
-                 const float* , const float* ,
-                 float* , int );
+void train(vector<vector<float>>, vector<int>, vector<vector<float>> &,
+           int, int, int, float, bool=true, bool=true);
                  
 #endif
