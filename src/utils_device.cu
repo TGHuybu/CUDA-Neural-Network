@@ -143,6 +143,7 @@ __global__ void _softmax_GPU(float *input, float *output, int batch_size, int ou
 
     // Find maximum value in the row
     float local_max = -1;
+    float local_max = -1;
     for (int i = 0; i < output_size; ++i) {
         local_max = max(local_max, input[batch_idx * output_size + i]);
     }
@@ -167,12 +168,17 @@ vector<float*> _fw_GPU(vector<float> X, vector<vector<float>> Ws, int n_samples,
     GpuTimer timer;
     float time;
 
+    GpuTimer timer;
+    float time;
+
     for (int i = 0; i < Ws.size(); i++) {
         if (i != 0) n_features = hidden_size;
         if (i == Ws.size() - 1) hidden_size = out_size;
 
         int n_input_elements = (n_samples * n_features);
         int n_output_elements = (n_samples * hidden_size);
+
+        timer.Start();
 
         timer.Start();
  
@@ -221,6 +227,11 @@ vector<float*> _fw_GPU(vector<float> X, vector<vector<float>> Ws, int n_samples,
         cout << "- layer " << i << " ";
         printf("forward time: %f ms\n", time);
 
+        timer.Stop();
+        time = timer.Elapsed();
+        cout << "- layer " << i << " ";
+        printf("forward time: %f ms\n", time);
+
         outs.push_back(out);
 
         // Free device memory
@@ -242,6 +253,10 @@ vector<float*> _fw_GPU_optim(vector<float> X, vector<vector<float>> Ws, int n_sa
     GpuTimer timer;
     float time;
 
+    
+    GpuTimer timer;
+    float time;
+
 
     for (int i = 0; i < Ws.size(); i++) {
         if (i != 0) n_features = hidden_size;
@@ -249,6 +264,9 @@ vector<float*> _fw_GPU_optim(vector<float> X, vector<vector<float>> Ws, int n_sa
 
         int n_input_elements = (n_samples * n_features);
         int n_output_elements = (n_samples * hidden_size);
+ 
+        timer.Start();
+
  
         timer.Start();
 
@@ -291,6 +309,11 @@ vector<float*> _fw_GPU_optim(vector<float> X, vector<vector<float>> Ws, int n_sa
             out, d_out, n_output_elements * sizeof(float), 
             cudaMemcpyDeviceToHost
         ));
+
+        timer.Stop();
+        time = timer.Elapsed();
+        cout << "- layer " << i << " ";
+        printf("forward time: %f ms\n", time);
 
         timer.Stop();
         time = timer.Elapsed();
