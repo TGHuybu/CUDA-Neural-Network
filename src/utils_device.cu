@@ -40,7 +40,7 @@ __global__ void scalar_div(float* data, int size, float scalar) {
     }
 }
 
-__global__ void _add_CPU(float* A, float* B, float* C, int n, float sign) {
+__global__ void _add_GPU(float* A, float* B, float* C, int n, float sign) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) C[idx] = A[idx] + sign * B[idx]; 
 }
@@ -333,7 +333,7 @@ vector<float*> _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
     cudaMemcpy(d_y_onehot, y_onehot.data(), n_samples * n_classes * sizeof(float), cudaMemcpyHostToDevice);
 
     int gridSize_1D = (n_samples * n_classes + blockSize_1D.x - 1) / blockSize_1D.x;
-    _add_CPU<<<gridSize_1D, blockSize_1D>>>(d_final_output, d_y_onehot, d_delta_out, n_samples * n_classes, -1);
+    _add_GPU<<<gridSize_1D, blockSize_1D>>>(d_final_output, d_y_onehot, d_delta_out, n_samples * n_classes, -1);
 
     //-- Final layer gradient
     float* final_input = outs[outs.size() - 2];  // Input to the final layer

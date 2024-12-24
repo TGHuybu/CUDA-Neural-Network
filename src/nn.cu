@@ -30,16 +30,13 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
     vector<float*> outs;
     if (use_gpu) { 
-        if (optimize) {
+        if (optimize) 
             outs = _fw_GPU_optim(X, Ws, n_samples, n_features, hidden_size, out_size);
-
-            // Set first output as input data
-            outs[0] = X.data();
-        } else 
+        else 
             outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
 
-            // Set first output as input data
-            outs[0] = X.data();
+        // Set first output as input data
+        outs[0] = X.data();
     } else {
         //-- Forward using CPU
         outs.push_back(X.data());
