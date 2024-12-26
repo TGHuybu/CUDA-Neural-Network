@@ -46,8 +46,6 @@ struct GpuTimer {
 	}
 };
 
-void device_info();
-
 __global__ void relu_derivative(const float* , float* , int );
 
 __global__ void scalar_div(float* , int , float );
@@ -66,22 +64,13 @@ __global__ void _sum_GPU(float*, float*, int);
 
 __global__ void _ReLU_GPU(float*, int);
 
-
-
 __global__ void _softmax_GPU(float *, float *, int , int ) ;
 
-vector<float*> _fw_GPU(vector<float>, vector<vector<float>>, int, int, 
-                        int, int);
-
-vector<float*> _fw_GPU_optim(vector<float>, vector<vector<float>>, int, int, 
-                        int, int);
-
+vector<float*> _forward_GPU(float*, vector<vector<float>>, int, int, 
+                        	int, int, bool=true);
 
 vector<float*> _backward_GPU(vector<float*> , vector<vector<float>> ,
-                        vector<float> , int , int ,
-                        int , int );
-// vector<float*> _backward_GPU(vector<float*>, vector<vector<float>>, 
-//                         vector<float>, int, int, 
-//                         int, int);
+								vector<float> , int , int ,
+								int , int );
 
 #endif

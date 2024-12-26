@@ -143,25 +143,23 @@ float* _ReLU_CPU(float* Z, int size) {
 }
 
 
-float* _softmax_CPU(float *input, int batch_size, int output_size) {
-    float* output = new float[batch_size * output_size];
-    for (int i = 0; i < batch_size; i++) {
+float* _softmax_CPU(float *input, int n_samples, int n_classes) {
+    float* output = new float[n_samples * n_classes];
+    for (int i = 0; i < n_samples; i++) {
 
         float local_max = -1;  // const?
-        for (int j = 0; j < output_size; j++) {
-            local_max = max(local_max, input[output_size * i + j]);
-        }
+        for (int j = 0; j < n_classes; j++) 
+            local_max = max(local_max, input[n_classes * i + j]);
 
         float exp_sum = 0;
-        for (int j = 0; j < output_size; j++) {
-            float exp_val = exp(input[output_size * i + j] - local_max);
-            output[output_size * i + j] = exp_val;
+        for (int j = 0; j < n_classes; j++) {
+            float exp_val = exp(input[n_classes * i + j] - local_max);
+            output[n_classes * i + j] = exp_val;
             exp_sum += exp_val;
         }
 
-        for (int j = 0; j < output_size; j++) {
-            output[output_size * i + j] /= exp_sum;
-        }
+        for (int j = 0; j < n_classes; j++) 
+            output[n_classes * i + j] /= exp_sum;
     }
 
     return output;

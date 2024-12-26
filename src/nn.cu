@@ -25,31 +25,27 @@ float loss(float* y_pred, float* y_true, int n_samples, int n_classes) {
 }
 
 
-vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples, int n_features, 
-                        int hidden_size, int out_size, bool use_gpu, bool optimize) {
+vector<float*> forward(float* X, vector<vector<float>> Ws, int n_samples, int n_features, 
+                        int n_neurons, int n_classes, bool use_gpu, bool optimize) {
 
     vector<float*> outs;
-    if (use_gpu) { 
-        if (optimize) {
-            outs = _fw_GPU_optim(X, Ws, n_samples, n_features, hidden_size, out_size);
-            outs[0] = X.data();
-        } else {
-            outs = _fw_GPU(X, Ws, n_samples, n_features, hidden_size, out_size);
-            outs[0] = X.data();
-        }
 
-    } else {
-        //-- Forward using CPU
-        outs.push_back(X.data());
+    // Forwarrd using GPU
+    if (use_gpu) { 
+        outs = _forward_GPU(X, Ws, n_samples, n_features, n_neurons, n_classes, optimize);
+    }
+    //-- Forward using CPU
+    else {
+        outs.push_back(X);
 
         GpuTimer timer;
         float time;
 
         int layer_in_size = n_features;
-        int layer_out_size = hidden_size;
+        int layer_out_size = n_neurons;
         for (int i = 0; i < Ws.size(); i++) {
-            if (i != 0) layer_in_size = hidden_size;
-            if (i == Ws.size() - 1) layer_out_size = out_size;
+            if (i != 0) layer_in_size = n_neurons;
+            if (i == Ws.size() - 1) layer_out_size = n_classes;
 
             timer.Start();
     
@@ -57,13 +53,15 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
             float* X_in = outs[i];
 
             // Multiply
+            // if i == 0:    (n_samples x n_neurons) * (n_neurons x n_neurons)
+            // if i == last: (n_samples x n_neurons) * (n_neurons x n_classes)
             float* out = _matmul_CPU(X_in, W.data(), n_samples, layer_in_size, layer_out_size);
 
             // Activation function
             if (i == Ws.size() - 1)
-                out = _softmax_CPU(out, n_samples, out_size);
+                out = _softmax_CPU(out, n_samples, n_classes);
             else
-                out = _ReLU_CPU(out, n_samples * hidden_size);
+                out = _ReLU_CPU(out, n_samples * n_neurons);
 
             timer.Stop();
             time = timer.Elapsed();
@@ -72,8 +70,6 @@ vector<float*> forward(vector<float> X, vector<vector<float>> Ws, int n_samples,
 
             outs.push_back(out);
         }
-
-        outs[0] = X.data();
     }
 
     return outs;
@@ -102,23 +98,16 @@ vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws,
 }
 
 
-void train(vector<vector<float>> X, vector<int> y, vector<vector<float>> &Ws,
-           int hidden_size, int n_classes, int max_epoch, float learning_rate, bool use_gpu, bool optimize) {
-    
-    int sample_size = X.size();
-    int n_data_features = X.at(0).size();
+void train(float* X, vector<int> y, vector<vector<float>> &Ws,
+           int sample_size, int n_data_features, int hidden_size, int n_classes, 
+           int max_epoch, float learning_rate, bool use_gpu, bool optimize) {
 
     // One-hot encoding
     vector<float> y_onehot = one_hot(y, sample_size, n_classes);
 
-    // Flatten input data
-    vector<float> X_train(sample_size * n_data_features);
-    for (int i = 0; i < sample_size; ++i)
-        copy(X[i].begin(), X[i].end(), X_train.begin() + i * n_data_features);
-
     for (int epoch = 0; epoch < max_epoch; epoch++) {
         // Forward
-        vector<float*> outs = forward(X_train, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, optimize);
+        vector<float*> outs = forward(X, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, optimize);
 
         // TODO: Branch out to CPU and GPU backward functions
         vector<float*> grads = backward(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes, use_gpu);
