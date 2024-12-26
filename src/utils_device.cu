@@ -326,32 +326,43 @@ vector<float*> _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
     // delta_out = final_output - y_onehot
     float* final_output = outs.back();
     float *d_final_output, *d_y_onehot, *d_delta_out;
-    cudaMalloc(&d_final_output, n_samples * n_classes * sizeof(float));
-    cudaMalloc(&d_y_onehot, n_samples * n_classes * sizeof(float));
-    cudaMalloc(&d_delta_out, n_samples * n_classes * sizeof(float));
+    CHECK(cudaMalloc(&d_final_output, n_samples * n_classes * sizeof(float)));
+    CHECK(cudaMalloc(&d_y_onehot, n_samples * n_classes * sizeof(float)));
+    CHECK(cudaMalloc(&d_delta_out, n_samples * n_classes * sizeof(float)));
 
-    cudaMemcpy(d_final_output, final_output, n_samples * n_classes * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_y_onehot, y_onehot.data(), n_samples * n_classes * sizeof(float), cudaMemcpyHostToDevice);
+    CHECK(cudaMemcpy(d_final_output, final_output, n_samples * n_classes * sizeof(float), cudaMemcpyHostToDevice));
+    CHECK(cudaMemcpy(d_y_onehot, y_onehot.data(), n_samples * n_classes * sizeof(float), cudaMemcpyHostToDevice));
 
     int gridSize_1D = (n_samples * n_classes + blockSize_1D.x - 1) / blockSize_1D.x;
     _add_GPU<<<gridSize_1D, blockSize_1D>>>(d_final_output, d_y_onehot, d_delta_out, n_samples * n_classes, -1);
+    CHECK(cudaGetLastError());  // Checks for kernel errors
+    CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
     
     //-- Final layer gradient
     float* final_input = outs[outs.size() - 2];  // Input to the final layer
     float *d_final_input, *d_final_input_T, *d_grad_out;
-    cudaMalloc(&d_final_input, n_samples * hidden_size * sizeof(float));
-    cudaMalloc(&d_final_input_T, hidden_size * n_samples * sizeof(float));
-    cudaMalloc(&d_grad_out, hidden_size * n_classes * sizeof(float));
+    CHECK(cudaMalloc(&d_final_input, n_samples * hidden_size * sizeof(float)));
+    CHECK(cudaMalloc(&d_final_input_T, hidden_size * n_samples * sizeof(float)));
+    CHECK(cudaMalloc(&d_grad_out, hidden_size * n_classes * sizeof(float)));
 
-    cudaMemcpy(d_final_input, final_input, n_samples * hidden_size * sizeof(float), cudaMemcpyHostToDevice);
-    _transpose_GPU<<<gridSize_1D, blockSize_1D>>>(d_final_input, d_final_input_T, n_samples, hidden_size);
+    CHECK(cudaMemcpy(d_final_input, final_input, n_samples * hidden_size * sizeof(float), cudaMemcpyHostToDevice));
+    dim3 gridSize_TP0(hidden_size / blockSize.x + 1, n_samples / blockSize.y + 1);
+    _transpose_GPU<<<gridSize_TP0, blockSize>>>(d_final_input, d_final_input_T, n_samples, hidden_size);
+    CHECK(cudaGetLastError());  // Checks for kernel errors
+    CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
 
-    dim3 gridSize(hidden_size / blockSize.x + 1, n_classes / blockSize.y + 1);
+    dim3 gridSize(n_classes / blockSize.x + 1, hidden_size / blockSize.y + 1);
     _matmul_GPU<<<gridSize, blockSize>>>(d_final_input_T, d_delta_out, d_grad_out, hidden_size, n_samples, n_classes);
+    CHECK(cudaGetLastError());  // Checks for kernel errors
+    CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
+
+    gridSize_1D = (hidden_size * n_classes + blockSize_1D.x - 1) / blockSize_1D.x;
     scalar_div<<<gridSize_1D, blockSize_1D>>>(d_grad_out, hidden_size * n_classes, n_samples);
+    CHECK(cudaGetLastError());  // Checks for kernel errors
+    CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
 
     gradients.back() = new float[hidden_size * n_classes];
-    cudaMemcpy(gradients.back(), d_grad_out, hidden_size * n_classes * sizeof(float), cudaMemcpyDeviceToHost);
+    CHECK(cudaMemcpy(gradients.back(), d_grad_out, hidden_size * n_classes * sizeof(float), cudaMemcpyDeviceToHost));
 
     //-- Backpropagation for hidden layers
     float* d_delta_hidden = d_delta_out;
@@ -365,89 +376,91 @@ vector<float*> _backward_GPU(vector<float*> outs, vector<vector<float>> Ws,
         float* layer_output = outs[layer + 1];
         float* d_layer_input, *d_layer_output;
 
-        cudaMalloc(&d_layer_input, n_samples * layer_input_size * sizeof(float));
-        cudaMalloc(&d_layer_output, n_samples * layer_output_size * sizeof(float));
-        cudaMemcpy(d_layer_input, layer_input, n_samples * layer_input_size * sizeof(float), cudaMemcpyHostToDevice);
-        cudaMemcpy(d_layer_output, layer_output, n_samples * layer_output_size * sizeof(float), cudaMemcpyHostToDevice);
+        CHECK(cudaMalloc(&d_layer_input, n_samples * layer_input_size * sizeof(float)));
+        CHECK(cudaMalloc(&d_layer_output, n_samples * layer_output_size * sizeof(float)));
+        CHECK(cudaMemcpy(d_layer_input, layer_input, n_samples * layer_input_size * sizeof(float), cudaMemcpyHostToDevice));
+        CHECK(cudaMemcpy(d_layer_output, layer_output, n_samples * layer_output_size * sizeof(float), cudaMemcpyHostToDevice));
 
         int next_layer = layer + 1;
-        vector<float>& W_next = Ws[next_layer];
+        vector<float> W_next = Ws[next_layer];
         int next_layer_input_size = layer_output_size;
         int next_layer_output_size = hidden_size;
         if (next_layer == Ws.size() - 1) next_layer_output_size = n_classes;
         
-        // temp
-        cout << "W_next: ";
-        int wnxtcnt = 0;
-        for (int i = 0; i < W_next.size(); i++) {
-            if (W_next[i] != 0) wnxtcnt += 1;
-        }
-        cout << wnxtcnt << endl;
-        
         // ReLU derivative
         float* dReLU;
-        cudaMalloc(&dReLU, n_samples * layer_output_size * sizeof(float));
+        CHECK(cudaMalloc(&dReLU, n_samples * layer_output_size * sizeof(float)));
+        gridSize_1D = (n_samples * layer_output_size + blockSize_1D.x - 1) / blockSize_1D.x;
         relu_derivative<<<gridSize_1D, blockSize_1D>>>(d_layer_output, dReLU, n_samples * layer_output_size);
-
+        CHECK(cudaGetLastError());  // Checks for kernel errors
+        CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
 
         float *d_W_next, *d_W_next_T;
-        cudaMalloc(&d_W_next, W_next.size() * sizeof(float));
-        cudaMalloc(&d_W_next_T, W_next.size() * sizeof(float));
-        cudaMemcpy(d_W_next, W_next.data(), W_next.size() * sizeof(float), cudaMemcpyHostToDevice);
+        CHECK(cudaMalloc(&d_W_next, next_layer_input_size * next_layer_output_size * sizeof(float)));
+        CHECK(cudaMalloc(&d_W_next_T, next_layer_input_size * next_layer_output_size * sizeof(float)));
+        CHECK(cudaMemcpy(d_W_next, W_next.data(), next_layer_input_size * next_layer_output_size * sizeof(float), cudaMemcpyHostToDevice));
 
         // Transpose next layer's weights
-        _transpose_GPU<<<gridSize_1D, blockSize_1D>>>(d_W_next, d_W_next_T, next_layer_input_size, next_layer_output_size);
-        
-        // temp
-        float* temp = new float[next_layer_input_size * next_layer_output_size];
-        cudaMemcpy(temp, d_W_next_T, next_layer_input_size * next_layer_output_size * sizeof(float), cudaMemcpyDeviceToHost);
-        int b = 0;
-        for (int i = 0; i < next_layer_input_size * next_layer_output_size; i++) {
-            if (temp[i] != 0) b += 1;
-        }
-        cout << b << endl;
+        dim3 gridSize_TP(next_layer_output_size / blockSize.x + 1, next_layer_input_size / blockSize.y + 1);
+        _transpose_GPU<<<gridSize_TP, blockSize>>>(d_W_next, d_W_next_T, next_layer_input_size, next_layer_output_size);
+        CHECK(cudaGetLastError());  // Checks for kernel errors
+        CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
 
         // Current layer's output error
         float* d_delta_hidden_temp;
-        cudaMalloc(&d_delta_hidden_temp, n_samples * layer_input_size * sizeof(float));
-        _matmul_GPU<<<gridSize, blockSize>>>(d_delta_hidden, d_W_next_T, d_delta_hidden_temp, n_samples, next_layer_output_size, next_layer_input_size);
+        CHECK(cudaMalloc(&d_delta_hidden_temp, n_samples * layer_input_size * sizeof(float)));
+        dim3 gridSize2(next_layer_input_size / blockSize.x + 1, n_samples / blockSize.y + 1);
+        _matmul_GPU<<<gridSize2, blockSize>>>(d_delta_hidden, d_W_next_T, d_delta_hidden_temp, n_samples, next_layer_output_size, next_layer_input_size);
+        CHECK(cudaGetLastError());  // Checks for kernel errors
+        CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
+
+        gridSize_1D = (n_samples * layer_output_size + blockSize_1D.x - 1) / blockSize_1D.x;
         _ewmul_GPU<<<gridSize_1D, blockSize_1D>>>(d_delta_hidden_temp, dReLU, d_delta_hidden, n_samples * layer_output_size);
+        CHECK(cudaGetLastError());  // Checks for kernel errors
+        CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
 
         float* d_layer_input_T;
-        cudaMalloc(&d_layer_input_T, layer_input_size * n_samples * sizeof(float));
-        _transpose_GPU<<<gridSize_1D, blockSize_1D>>>(d_layer_input, d_layer_input_T, n_samples, layer_input_size);
-
+        CHECK(cudaMalloc(&d_layer_input_T, layer_input_size * n_samples * sizeof(float)));
+        dim3 gridSize_TP2(layer_input_size / blockSize.x + 1, n_samples / blockSize.y + 1);
+        _transpose_GPU<<<gridSize_TP2, blockSize>>>(d_layer_input, d_layer_input_T, n_samples, layer_input_size);
+        CHECK(cudaGetLastError());  // Checks for kernel errors
+        CHECK(cudaDeviceSynchronize());  // Ensures all operations are complete
+        
+        // Grad hidden
         float* d_grad_hidden;
-        cudaMalloc(&d_grad_hidden, layer_input_size * layer_output_size * sizeof(float));
-        _matmul_GPU<<<gridSize, blockSize>>>(d_layer_input_T, d_delta_hidden, d_grad_hidden, layer_input_size, n_samples, layer_output_size);
+        CHECK(cudaMalloc(&d_grad_hidden, layer_input_size * layer_output_size * sizeof(float)));
+        
+        // Grid size
+        dim3 gridSize3(layer_output_size / blockSize.x + 1, layer_input_size / blockSize.y + 1);
+        _matmul_GPU<<<gridSize3, blockSize>>>(d_layer_input_T, d_delta_hidden, d_grad_hidden, layer_input_size, n_samples, layer_output_size);
+        // 1D grid size
+        gridSize_1D = (layer_input_size * layer_output_size + blockSize_1D.x - 1) / blockSize_1D.x;
         scalar_div<<<gridSize_1D, blockSize_1D>>>(d_grad_hidden, layer_input_size * layer_output_size, n_samples);
 
-        gradients[layer] = new float[layer_input_size * layer_output_size];
-        cudaMemcpy(gradients[layer], d_grad_hidden, layer_input_size * layer_output_size * sizeof(float), cudaMemcpyDeviceToHost);
+        // gradients[layer] = new float[layer_input_size * layer_output_size];
+        cout << layer_input_size * layer_output_size << endl;
+        // float* grad_hidden = new float[layer_input_size * layer_output_size];
+        CHECK(cudaMemcpy(grad_hidden, d_grad_hidden, layer_input_size * layer_output_size * sizeof(float), cudaMemcpyDeviceToHost));
+        
+        gradients[layer] = grad_hidden;
 
-        int a = 0;
-        for (int i = 0; i < layer_input_size * layer_output_size; i++) {
-            if (gradients[layer][i] != 0) a += 1;
-        }
-        cout << a << endl;
-
-        cudaFree(d_layer_input);
-        cudaFree(d_layer_output);
-        cudaFree(dReLU);
-        cudaFree(d_W_next);
-        cudaFree(d_W_next_T);
-        cudaFree(d_delta_hidden_temp);
-        cudaFree(d_layer_input_T);
-        cudaFree(d_grad_hidden);
+        CHECK(cudaFree(d_layer_input));
+        CHECK(cudaFree(d_layer_output));
+        CHECK(cudaFree(dReLU));
+        CHECK(cudaFree(d_W_next));
+        CHECK(cudaFree(d_W_next_T));
+        CHECK(cudaFree(d_delta_hidden_temp));
+        CHECK(cudaFree(d_layer_input_T));
+        CHECK(cudaFree(d_grad_hidden));
     }
 
-    cudaFree(d_final_output);
-    cudaFree(d_y_onehot);
-    cudaFree(d_delta_out);
-    cudaFree(d_final_input);
-    cudaFree(d_final_input_T);
-    cudaFree(d_grad_out);
-    cudaFree(d_delta_hidden);
+    CHECK(cudaFree(d_final_output));
+    CHECK(cudaFree(d_y_onehot));
+    CHECK(cudaFree(d_delta_out));
+    CHECK(cudaFree(d_final_input));
+    CHECK(cudaFree(d_final_input_T));
+    CHECK(cudaFree(d_grad_out));
+    CHECK(cudaFree(d_delta_hidden));
 
     return gradients;
 }
