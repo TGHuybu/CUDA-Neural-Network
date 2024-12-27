@@ -15,9 +15,8 @@ vector<float> one_hot(vector<int> y, int n_samples, int n_classes) {
 float loss(float* y_pred, float* y_true, int n_samples, int n_classes) {
     // log(y_pred)
     float* log_y_pred = new float[n_samples * n_classes];
-    for (int i = 0; i < n_samples * n_classes; i++) {
+    for (int i = 0; i < n_samples * n_classes; i++) 
         log_y_pred[i] = log(fmax(y_pred[i], 1e-7));
-    }
 
     float* temp = _ewmul_CPU(log_y_pred, y_true, n_samples * n_classes);
     float cee = _sum_CPU(temp, n_samples * n_classes);
@@ -31,9 +30,9 @@ vector<float*> forward(float* X, vector<vector<float>> Ws, int n_samples, int n_
     vector<float*> outs;
 
     // Forwarrd using GPU
-    if (use_gpu) { 
+    if (use_gpu) 
         outs = _forward_GPU(X, Ws, n_samples, n_features, n_neurons, n_classes, optimize);
-    }
+
     //-- Forward using CPU
     else {
         outs.push_back(X);
@@ -80,20 +79,21 @@ void update_weights(vector<vector<float>> &Ws, vector<float*> gradients,
                     float learning_rate) {
 
     for (int i = 0; i < Ws.size(); i++) {
-        for (int j = 0; j < Ws[i].size(); j++) {
+        for (int j = 0; j < Ws[i].size(); j++)
             Ws[i][j] -= learning_rate * gradients[i][j];
-        }
     }
 }
 
-vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws,
-                        vector<float> y_onehot, int n_samples, int n_features,
-                        int hidden_size, int n_classes, bool isDevice){
-    if (isDevice){
-        return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, hidden_size, n_classes);
-    }
-    else {
-        return _backward_CPU(outs, Ws, y_onehot, n_samples, n_features, hidden_size, n_classes);
+vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws, vector<float> y_onehot,
+                        int n_samples, int n_features, int n_neurons, int n_classes, 
+                        bool use_gpu, bool optimize){
+    if (use_gpu){
+        if (optimize)
+            return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
+        else
+            return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
+    } else {
+        return _backward_CPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
     }
 }
 
@@ -109,8 +109,12 @@ void train(float* X, vector<int> y, vector<vector<float>> &Ws,
         // Forward
         vector<float*> outs = forward(X, Ws, sample_size, n_data_features, hidden_size, n_classes, use_gpu, optimize);
 
-        // TODO: Branch out to CPU and GPU backward functions
-        vector<float*> grads = backward(outs, Ws, y_onehot, sample_size, n_data_features, hidden_size, n_classes, use_gpu);
+        // Backward
+        vector<float*> grads = backward(
+            outs, Ws, y_onehot, 
+            sample_size, n_data_features, hidden_size, n_classes, 
+            false, false
+        );
 
         // Update weights
         update_weights(Ws, grads, learning_rate);

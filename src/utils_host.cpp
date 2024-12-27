@@ -186,7 +186,8 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
     // Final output layer error
     // delta_out = final_output - y_onehot
     float* final_output = outs.back();
-    float* delta_out = _add_CPU(final_output, y_onehot.data(), n_samples * n_classes, -1); 
+    float* delta_out = _add_CPU(final_output, y_onehot.data(), n_samples * n_classes, -1);
+    float* delta_hidden = delta_out; 
 
     // Final layer gradient
     // TODO: divide grad_out by n_samples
@@ -199,14 +200,11 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
     gradients.back() = grad_out; 
 
     free(final_input_T);
-    free(grad_out);
 
     // BEGIN BACKPROPAGATION
-    float* delta_hidden = delta_out;
     int layer_input_size = hidden_size;
     int layer_output_size = hidden_size;
     for (int layer = Ws.size() - 2; layer > -1; layer--) {
-
         if (layer == 0) layer_input_size = n_features;
 
         // Current layer input + outputs
@@ -215,10 +213,10 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
 
         // Obtain next layer's weights, input + output sizes
         int next_layer = layer + 1;
-        vector<float> W_next = Ws[next_layer];
         int next_layer_input_size = layer_output_size;
         int next_layer_output_size = hidden_size;
         if (next_layer == Ws.size() - 1) next_layer_output_size = n_classes;
+        vector<float> W_next = Ws[next_layer];
 
         // ReLU derivative
         float* dReLU = _dReLU_CPU(layer_output, n_samples * layer_output_size);
@@ -237,17 +235,16 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
         // Update output error
         delta_hidden = delta_hidden_new;
 
-        // TODO: divide grad_hidden by n_samples
         float* layer_input_T = _transpose_CPU(layer_input, n_samples, layer_input_size);
         float* grad_hidden = _matmul_CPU(layer_input_T, delta_hidden, layer_input_size, n_samples, layer_output_size);
         grad_hidden = _scalar_div(grad_hidden, layer_input_size * layer_output_size, n_samples);
-
-        gradients[layer] = grad_hidden; // Store gradient
+        gradients[layer] = grad_hidden;
         
         free(layer_input_T);
         free(W_next_T);
     }
 
-    free(delta_hidden); // Free memory for the last delta
+    free(delta_hidden);
+
     return gradients;
 }
