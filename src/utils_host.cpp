@@ -25,32 +25,24 @@ float* _transpose_CPU(float *A, int n_rows, int n_cols) {
     float* A_T = new float[n_rows * n_cols];
     for (int i = 0; i < n_rows; i++) {
         for (int j = 0; j < n_cols; j++)
-            A_T[n_rows * j + i] = A[n_cols * i + j];
-
+            A_T[n_rows * j + i] = fminf(fmaxf(A[n_cols * i + j], -65504.0f), 65504.0f);
     }
-
     return A_T;
 }
 
 
 float* _add_CPU(float* a, float* b, int n, float sign) {
-    // Perform addition or subtraction (based on sign)
-    // >>> c = a + sign * b 
-    // >>> <=> (c = a + b) or (c = a - b)
     float* c = new float[n];
     for (int i = 0; i < n; i++)
-        c[i] = a[i] + sign * b[i];
-
+        c[i] = fminf(fmaxf(a[i] + sign * b[i], -65504.0f), 65504.0f);
     return c;
 }
 
 
 float* _ewmul_CPU(float* a, float* b, int n) {
-    // Element-wise multiplicationn
     float* c = new float[n];
     for (int i = 0; i < n; i++)
-        c[i] = a[i] * b[i];
-
+        c[i] = fminf(fmaxf(a[i] * b[i], -65504.0f), 65504.0f);
     return c;
 }
 
@@ -62,11 +54,9 @@ float* _matmul_CPU(float* A, float* B, int m, int n, int k) {
             float c = 0;
             for (int i = 0; i < n; i++) 
                 c += A[row * n + i] * B[i * k + col];
-
-            C[row * k + col] = c;
+            C[row * k + col] = fminf(fmaxf(c, -65504.0f), 65504.0f);
         }
     }
-
     return C;
 }
 
@@ -74,8 +64,7 @@ float* _matmul_CPU(float* A, float* B, int m, int n, int k) {
 float* _scalar_div(float* A, int n, float b) {
     float* B = new float[n];
     for (int i = 0; i < n; i++)
-        B[i] = A[i] / b;
-
+        B[i] = fminf(fmaxf(A[i] / b, -65504.0f), 65504.0f);
     return B;
 }
 
@@ -84,7 +73,6 @@ float _sum_CPU(float* a, int n) {
     float sum = 0;
     for (int i = 0; i < n; i++)
         sum += a[i];
-
     return sum;
 }
 
@@ -92,8 +80,7 @@ float _sum_CPU(float* a, int n) {
 float* _ReLU_CPU(float* Z, int size) {
     float* output = new float[size];
     for (int i = 0; i < size; i++)
-        output[i] = fmaxf(0, Z[i]);
-
+        output[i] = fminf(fmaxf(fmaxf(0, Z[i]), -65504.0f), 65504.0f);
     return output;
 }
 
@@ -101,22 +88,20 @@ float* _ReLU_CPU(float* Z, int size) {
 float* _softmax_CPU(float *input, int n_samples, int n_classes) {
     float* output = new float[n_samples * n_classes];
     for (int i = 0; i < n_samples; i++) {
-
-        float local_max = -1;  // const?
+        float local_max = -1;
         for (int j = 0; j < n_classes; j++) 
-            local_max = max(local_max, input[n_classes * i + j]);
-
+            local_max = fmaxf(local_max, input[n_classes * i + j]);
+        
         float exp_sum = 0;
         for (int j = 0; j < n_classes; j++) {
             float exp_val = exp(input[n_classes * i + j] - local_max);
-            output[n_classes * i + j] = exp_val;
+            output[n_classes * i + j] = fminf(fmaxf(exp_val, -65504.0f), 65504.0f);
             exp_sum += exp_val;
         }
 
         for (int j = 0; j < n_classes; j++) 
             output[n_classes * i + j] /= exp_sum;
     }
-
     return output;
 }
 
@@ -126,8 +111,8 @@ float* _dReLU_CPU(float* y, int n) {
     for (int i = 0; i < n; i++) {
         if (y[i] >= 0) dy[i] = 1;
         else dy[i] = 0;
+        dy[i] = fminf(fmaxf(dy[i], -65504.0f), 65504.0f);
     }
-
     return dy;
 }
 
