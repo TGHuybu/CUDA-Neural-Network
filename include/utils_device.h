@@ -46,11 +46,11 @@ struct GpuTimer {
 	}
 };
 
+__global__ void _transpose_GPU(float*, float*, int, int);
+
 __global__ void relu_derivative(const float* , float* , int );
 
 __global__ void scalar_div(float* , int , float );
-
-__global__ void _transpose_GPU(float*, float*, int, int);
 
 __global__ void _add_GPU(float*, float*, float*, int, float);
 
@@ -66,10 +66,26 @@ __global__ void _ReLU_GPU(float*, int);
 
 __global__ void _softmax_GPU(float *, float *, int , int ) ;
 
+__global__ void _transpose_GPU_FP16(__half*, __half*, int, int);
+
+__global__ void relu_derivative_FP16(const __half* , __half* , int );
+
+__global__ void scalar_div_FP16(__half* , int , __half );
+
+__global__ void _add_GPU_FP16(__half*, __half*, __half*, int, __half);
+
+__global__ void _ewmul_GPU_FP16(__half*, __half*, __half*, int);
+
+__global__ void _matmul_GPU_FP16(__half*, __half*, __half*, int, int, int);
+
 vector<float*> _forward_GPU(float*, vector<vector<float>>, int, int, 
                         	int, int, bool=true);
 
 vector<float*> _backward_GPU(vector<float*> , vector<vector<float>> ,
+								vector<float> , int , int ,
+								int , int );
+
+vector<float*> _backward_GPU_FP16(vector<float*> , vector<vector<float>> ,
 								vector<float> , int , int ,
 								int , int );
 

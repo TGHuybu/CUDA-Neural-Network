@@ -88,9 +88,8 @@ vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws, vector<fl
                         int n_samples, int n_features, int n_neurons, int n_classes, 
                         bool use_gpu, bool optimize){
     if (use_gpu) {
-        cout << "bw GPU\n";
         if (optimize)
-            return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
+            return _backward_GPU_FP16(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
         else
             return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
     } else {

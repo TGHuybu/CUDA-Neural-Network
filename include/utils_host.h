@@ -3,15 +3,7 @@
 
 #include "libs.h"
 
-float _randValue();
-
-void _makeValue(std::vector<float>&, int, int);
-
 void init_weights(vector<vector<float>> &Ws);
-
-void init_param(vector<float> &, vector<float> &,
-                vector<float> &, vector<float> &,
-                vector<float> &, vector<float> &);
 
 float* _transpose_CPU(float*, int, int);
 

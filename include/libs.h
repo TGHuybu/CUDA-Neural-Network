@@ -9,5 +9,6 @@
 #include <random>
 #include <cmath>
 #include <limits>
+#include <cuda_fp16.h>
 
 using namespace std;

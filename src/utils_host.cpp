@@ -1,31 +1,10 @@
 #include "utils_host.h"
 
 
-float _randValue(){
-    random_device rd;
-    mt19937 gen(rd());
-    normal_distribution<> distrib(0, 1); 
-
-    float value;
-    do {
-        value = distrib(gen);
-    } while (value < -1.0 || value > 1.0);
-
-    return value;
-}
-
-
-void _makeValue(vector<float> &vt, int h, int w){
-    for (int i = 0; i < h*w; i++ ){
-        vt[i] = _randValue();
-    }
-}
-
-
 void init_weights(vector<vector<float>> &Ws) {
     // AMAZING RANDOM GENERATOR (WOW!)
     random_device rd;
-    mt19937 gen(rd());
+    mt19937 gen(0);
     normal_distribution<> distrib(0, 1);
 
     auto randValue = [&]() -> float {
@@ -38,31 +17,7 @@ void init_weights(vector<vector<float>> &Ws) {
     
     // Init weights with random numbers
     for (int i = 0; i < Ws.size(); i++)
-        for (auto &w : Ws[i]) w = _randValue();
-}
-
-
-void init_param(vector<float> &W1, vector<float> &b1,
-                vector<float> &W2, vector<float> &b2,
-                vector<float> &W3, vector<float> &b3) {
-    random_device rd;
-    mt19937 gen(rd());
-    normal_distribution<> distrib(0, 1);
-
-    auto randValue = [&]() -> float {
-        float value;
-        do {
-            value = distrib(gen);
-        } while (value < -1.0 || value > 1.0);
-        return static_cast<float>(value);
-    };
-
-    for (auto &w : W1) w = _randValue();
-    for (auto &w : b1) w = _randValue();
-    for (auto &w : W2) w = _randValue();
-    for (auto &w : b2) w = _randValue();
-    for (auto &w : W3) w = _randValue();
-    for (auto &w : b3) w = _randValue();
+        for (auto &w : Ws[i]) w = randValue();
 }
 
 
