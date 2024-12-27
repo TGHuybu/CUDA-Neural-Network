@@ -190,7 +190,6 @@ vector<float*> _backward_CPU(vector<float*> outs, vector<vector<float>> Ws,
     float* delta_hidden = delta_out; 
 
     // Final layer gradient
-    // TODO: divide grad_out by n_samples
     float* final_input = outs[outs.size() - 2];  // Input to the final layer
     float* final_input_T = _transpose_CPU(final_input, n_samples, hidden_size);
     float* grad_out = _matmul_CPU(final_input_T, delta_out, hidden_size, n_samples, n_classes);

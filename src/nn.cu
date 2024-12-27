@@ -87,7 +87,8 @@ void update_weights(vector<vector<float>> &Ws, vector<float*> gradients,
 vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws, vector<float> y_onehot,
                         int n_samples, int n_features, int n_neurons, int n_classes, 
                         bool use_gpu, bool optimize){
-    if (use_gpu){
+    if (use_gpu) {
+        cout << "bw GPU\n";
         if (optimize)
             return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
         else
@@ -113,7 +114,7 @@ void train(float* X, vector<int> y, vector<vector<float>> &Ws,
         vector<float*> grads = backward(
             outs, Ws, y_onehot, 
             sample_size, n_data_features, hidden_size, n_classes, 
-            false, false
+            use_gpu, optimize
         );
 
         // Update weights

@@ -122,6 +122,8 @@ int main(int argc, char** argv) {
     // Train
     cout << "\nTrain start...\n";
     cout << "-- number of epochs: " << max_epoch << endl;
+    cout << "-- use GPU: " << use_gpu << endl;
+    cout << "-- optimize GPU: " << optimize << endl;
     timer.Start();
     train(X_train, trainLabels, Ws,
            num_img_train, imageSize, hidden_size, output_size, 
