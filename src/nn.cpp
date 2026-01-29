@@ -29,46 +29,46 @@ vector<float*> forward(float* X, vector<vector<float>> Ws, int n_samples, int n_
 
     vector<float*> outs;
 
-    // Forwarrd using GPU
-    if (use_gpu) 
-        outs = _forward_GPU(X, Ws, n_samples, n_features, n_neurons, n_classes, optimize);
+    // Forward using GPU (not supported for the CI/CD test branch)
+    // if (use_gpu) {
+    //     outs = _forward_GPU(X, Ws, n_samples, n_features, n_neurons, n_classes, optimize);
+    //     return outs;
+    // }
 
     //-- Forward using CPU
-    else {
-        outs.push_back(X);
+    outs.push_back(X);
 
-        GpuTimer timer;
-        float time;
+    GpuTimer timer;
+    float time;
 
-        int layer_in_size = n_features;
-        int layer_out_size = n_neurons;
-        for (int i = 0; i < Ws.size(); i++) {
-            if (i != 0) layer_in_size = n_neurons;
-            if (i == Ws.size() - 1) layer_out_size = n_classes;
+    int layer_in_size = n_features;
+    int layer_out_size = n_neurons;
+    for (int i = 0; i < Ws.size(); i++) {
+        if (i != 0) layer_in_size = n_neurons;
+        if (i == Ws.size() - 1) layer_out_size = n_classes;
 
-            timer.Start();
-    
-            vector<float> W = Ws[i];
-            float* X_in = outs[i];
+        timer.Start();
 
-            // Multiply
-            // if i == 0:    (n_samples x n_neurons) * (n_neurons x n_neurons)
-            // if i == last: (n_samples x n_neurons) * (n_neurons x n_classes)
-            float* out = _matmul_CPU(X_in, W.data(), n_samples, layer_in_size, layer_out_size);
+        vector<float> W = Ws[i];
+        float* X_in = outs[i];
 
-            // Activation function
-            if (i == Ws.size() - 1)
-                out = _softmax_CPU(out, n_samples, n_classes);
-            else
-                out = _ReLU_CPU(out, n_samples * n_neurons);
+        // Multiply
+        // if i == 0:    (n_samples x n_neurons) * (n_neurons x n_neurons)
+        // if i == last: (n_samples x n_neurons) * (n_neurons x n_classes)
+        float* out = _matmul_CPU(X_in, W.data(), n_samples, layer_in_size, layer_out_size);
 
-            timer.Stop();
-            time = timer.Elapsed();
-            cout << "- layer " << i << " ";
-            printf("forward time: %f ms\n", time);
+        // Activation function
+        if (i == Ws.size() - 1)
+            out = _softmax_CPU(out, n_samples, n_classes);
+        else
+            out = _ReLU_CPU(out, n_samples * n_neurons);
 
-            outs.push_back(out);
-        }
+        timer.Stop();
+        time = timer.Elapsed();
+        cout << "- layer " << i << " ";
+        printf("forward time: %f ms\n", time);
+
+        outs.push_back(out);
     }
 
     return outs;
@@ -87,14 +87,14 @@ void update_weights(vector<vector<float>> &Ws, vector<float*> gradients,
 vector<float*> backward(vector<float*> outs, vector<vector<float>> Ws, vector<float> y_onehot,
                         int n_samples, int n_features, int n_neurons, int n_classes, 
                         bool use_gpu, bool optimize){
-    if (use_gpu) {
-        if (optimize)
-            return _backward_GPU_FP16(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
-        else
-            return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
-    } else {
-        return _backward_CPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
-    }
+    // if (use_gpu) {
+    //     if (optimize)
+    //         return _backward_GPU_FP16(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
+    //     else
+    //         return _backward_GPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
+    // }
+    
+    return _backward_CPU(outs, Ws, y_onehot, n_samples, n_features, n_neurons, n_classes);
 }
 
 

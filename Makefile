@@ -1,6 +1,6 @@
 CXX := g++
 CXX_FLAGS := -std=c++17 -ggdb
-NVCC := nvcc
+# NVCC := nvcc
 
 BIN := bin
 SRC := src
@@ -14,8 +14,8 @@ run: clean all
 	clear 
 	./$(BIN)/$(EXECUTABLE)
 
-$(BIN)/$(EXECUTABLE): $(SRC)/*.cu $(SRC)/*.cpp
-	$(NVCC) -I $(INCLUDE) $^ -o $@
+$(BIN)/$(EXECUTABLE): $(SRC)/*.cpp
+	$(CXX) $(CXX_FLAGS) -I $(INCLUDE) $^ -o $@
 
 clean: 
 	-rm $(BIN)/*

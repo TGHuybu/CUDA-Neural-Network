@@ -3,7 +3,9 @@
 
 #include "libs.h"
 
-void init_weights(vector<vector<float>> &Ws);
+void init_mat(vector<vector<float>> &mat);
+
+void init_arr_int(vector<float> &arr);
 
 float* _transpose_CPU(float*, int, int);
 

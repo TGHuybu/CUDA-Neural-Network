@@ -29,29 +29,18 @@ int main(int argc, char** argv) {
     vector<int> trainLabels;
     vector<vector<float>> testImages;
     vector<int> testLabels;
-    int num_img_train, num_img_test, imageSize, num_label_train, num_label_test, n_rows, n_cols;
-    try {
-        // Load training images
-        readImages("mnist/train-images-idx3-ubyte", trainImages, num_img_train, imageSize, n_rows, n_cols);
-        cout << "Train Images: " << num_img_train << " with size " << imageSize << endl;
+    int imageSize = 25;
+    int output_size = 5;
 
-        // Load training labels
-        readLabels("mnist/train-labels-idx1-ubyte", trainLabels, num_label_train);
-        cout << "Train Labels: " << num_label_train << " labels loaded" << endl;
+    trainImages.resize(30, vector<float>(imageSize));
+    init_mat(trainImages);
+    trainLabels.resize(output_size);
+    init_arr_int(trainLabels);
 
-        // Load test images
-        readImages("mnist/t10k-images-idx3-ubyte", testImages, num_img_test, imageSize, n_rows, n_cols);
-        cout << "Test Images: " << num_img_test << " with size " << imageSize << endl;
-
-        // Load test labels
-        readLabels("mnist/t10k-labels-idx1-ubyte", testLabels, num_label_test);
-        cout << "Test Labels: " << num_label_test << " labels loaded" << endl;
-
-    } catch (const exception& e) {
-        cerr << "ERROR: " << e.what() << endl;
-        return 1;
-    }
-    cout << endl;
+    testImages.resize(30, vector<float>(imageSize));
+    init_mat(testImages);
+    testLabels.resize(output_size);
+    init_arr_int(testLabels);
 
     const float output_size = 10;
 
@@ -66,7 +55,7 @@ int main(int argc, char** argv) {
     Ws.push_back(W3);
 
     // Init weights
-    init_weights(Ws);
+    init_mat(Ws);
 
     vector<vector<float>> Ws_gpu = Ws;
 
@@ -89,18 +78,18 @@ int main(int argc, char** argv) {
     time = timer.Elapsed();
     printf("> FORWARD TIME CPU: %f ms\n\n", time);
 
-    timer.Start();
-    vector<float*> outputs_gpu = forward(
-        X_train, Ws_gpu, num_img_train, imageSize, hidden_size, output_size, true, optimize
-    );
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("> FORWARD TIME GPU: %f ms\n\n", time);
+    // timer.Start();
+    // vector<float*> outputs_gpu = forward(
+    //     X_train, Ws_gpu, num_img_train, imageSize, hidden_size, output_size, true, optimize
+    // );
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("> FORWARD TIME GPU: %f ms\n\n", time);
 
-    float err = 0;
-    for (int i = 0; i < num_img_train * output_size; i++)
-        err += abs(outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]);
-    cout << "-- Mean error CPU - GPU: " << err / (num_img_train * output_size) << endl;
+    // float err = 0;
+    // for (int i = 0; i < num_img_train * output_size; i++)
+    //     err += abs(outputs_cpu.at(3)[i] - outputs_gpu.at(3)[i]);
+    // cout << "-- Mean error CPU - GPU: " << err / (num_img_train * output_size) << endl;
 
     // Train
     cout << "\nTraining on CPU...\n";
@@ -112,14 +101,14 @@ int main(int argc, char** argv) {
     time = timer.Elapsed();
     printf("> TRAIN TIME: %f ms\n\n", time);
     
-    cout << "Training on GPU...\n";
-    timer.Start();
-    train(X_train, trainLabels, Ws_gpu,
-           num_img_train, imageSize, hidden_size, output_size, 
-           max_epoch, learning_rate, true, optimize);
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("> TRAIN TIME: %f ms\n\n", time);
+    // cout << "Training on GPU...\n";
+    // timer.Start();
+    // train(X_train, trainLabels, Ws_gpu,
+    //        num_img_train, imageSize, hidden_size, output_size, 
+    //        max_epoch, learning_rate, true, optimize);
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("> TRAIN TIME: %f ms\n\n", time);
 
     // Flatten test data
     float* X_test = new float[num_img_test * imageSize];
@@ -132,14 +121,14 @@ int main(int argc, char** argv) {
     vector<float*> test_outputs_cpu = forward(
         X_test, Ws, num_img_test, imageSize, hidden_size, output_size, false, false
     );
-    cout << "Forward on test set, GPU...\n";
-    vector<float*> test_outputs_gpu = forward(
-        X_test, Ws_gpu, num_img_test, imageSize, hidden_size, output_size, true, optimize
-    );
-    err = 0;
-    for (int i = 0; i < num_img_test * output_size; i++)
-        err += abs(test_outputs_cpu.at(3)[i] - test_outputs_gpu.at(3)[i]);
-    cout << "-- Mean error CPU - GPU: " << err / (num_img_test * output_size) << endl;
+    // cout << "Forward on test set, GPU...\n";
+    // vector<float*> test_outputs_gpu = forward(
+    //     X_test, Ws_gpu, num_img_test, imageSize, hidden_size, output_size, true, optimize
+    // );
+    // err = 0;
+    // for (int i = 0; i < num_img_test * output_size; i++)
+    //     err += abs(test_outputs_cpu.at(3)[i] - test_outputs_gpu.at(3)[i]);
+    // cout << "-- Mean error CPU - GPU: " << err / (num_img_test * output_size) << endl;
 
     return 0;
 }

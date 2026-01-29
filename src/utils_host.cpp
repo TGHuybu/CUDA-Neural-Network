@@ -1,7 +1,7 @@
 #include "utils_host.h"
 
 
-void init_weights(vector<vector<float>> &Ws) {
+void init_mat(vector<vector<float>> &mat) {
     // AMAZING RANDOM GENERATOR (WOW!)
     random_device rd;
     mt19937 gen(0);
@@ -16,8 +16,14 @@ void init_weights(vector<vector<float>> &Ws) {
     };
     
     // Init weights with random numbers
-    for (int i = 0; i < Ws.size(); i++)
-        for (auto &w : Ws[i]) w = randValue();
+    for (int i = 0; i < mat.size(); i++)
+        for (auto &w : mat[i]) w = randValue();
+}
+
+
+void init_arr_int(vector<int> &arr) {
+    for (int i = 0; i < arr.size(); i++)
+        arr[i] = 0;
 }
 
 
