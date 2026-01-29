@@ -17,3 +17,5 @@ jobs:
       run: mkdir bin
     - name: make
       run: make
+    - name: test
+      run: ./bin/nn_main 10 4 0.5 0
