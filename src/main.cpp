@@ -66,17 +66,18 @@ int main(int argc, char** argv) {
             X_train[i * imageSize + j] = trainImages[i][j];
     }
 
-    GpuTimer timer;
+    // GpuTimer timer;
 
     //-- TEST FORWARD RUNTIME
-    float time;
-    timer.Start();
+    // float time;
+    // timer.Start();
     vector<float*> outputs_cpu = forward(
         X_train, Ws, num_img_train, imageSize, hidden_size, output_size, false, false
     );
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("> FORWARD TIME CPU: %f ms\n\n", time);
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("> FORWARD TIME CPU: %f ms\n\n", time);
+    cout << "Forward test complete (CPU)\n";
 
     // timer.Start();
     // vector<float*> outputs_gpu = forward(
@@ -93,13 +94,14 @@ int main(int argc, char** argv) {
 
     // Train
     cout << "\nTraining on CPU...\n";
-    timer.Start();
+    // timer.Start();
     train(X_train, trainLabels, Ws,
            num_img_train, imageSize, hidden_size, output_size, 
            max_epoch, learning_rate, false, false);
-    timer.Stop();
-    time = timer.Elapsed();
-    printf("> TRAIN TIME: %f ms\n\n", time);
+    // timer.Stop();
+    // time = timer.Elapsed();
+    // printf("> TRAIN TIME: %f ms\n\n", time);
+    cout << "Forward test complete (CPU)\n";
     
     // cout << "Training on GPU...\n";
     // timer.Start();
@@ -129,6 +131,8 @@ int main(int argc, char** argv) {
     // for (int i = 0; i < num_img_test * output_size; i++)
     //     err += abs(test_outputs_cpu.at(3)[i] - test_outputs_gpu.at(3)[i]);
     // cout << "-- Mean error CPU - GPU: " << err / (num_img_test * output_size) << endl;
+
+    cout << "ALL DONE!\n";
 
     return 0;
 }

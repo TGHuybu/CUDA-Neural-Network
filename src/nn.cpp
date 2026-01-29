@@ -38,8 +38,8 @@ vector<float*> forward(float* X, vector<vector<float>> Ws, int n_samples, int n_
     //-- Forward using CPU
     outs.push_back(X);
 
-    GpuTimer timer;
-    float time;
+    // GpuTimer timer;
+    // float time;
 
     int layer_in_size = n_features;
     int layer_out_size = n_neurons;
@@ -47,7 +47,7 @@ vector<float*> forward(float* X, vector<vector<float>> Ws, int n_samples, int n_
         if (i != 0) layer_in_size = n_neurons;
         if (i == Ws.size() - 1) layer_out_size = n_classes;
 
-        timer.Start();
+        // timer.Start();
 
         vector<float> W = Ws[i];
         float* X_in = outs[i];
@@ -63,10 +63,10 @@ vector<float*> forward(float* X, vector<vector<float>> Ws, int n_samples, int n_
         else
             out = _ReLU_CPU(out, n_samples * n_neurons);
 
-        timer.Stop();
-        time = timer.Elapsed();
+        // timer.Stop();
+        // time = timer.Elapsed();
         cout << "- layer " << i << " ";
-        printf("forward time: %f ms\n", time);
+        // printf("forward time: %f ms\n", time);
 
         outs.push_back(out);
     }
