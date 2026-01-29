@@ -31,6 +31,8 @@ int main(int argc, char** argv) {
     vector<int> testLabels;
     int imageSize = 25;
     int output_size = 5;
+    int num_img_train = 30;
+    int num_img_test = 30;
 
     trainImages.resize(30, vector<float>(imageSize));
     init_mat(trainImages);
