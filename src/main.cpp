@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     vector<vector<float>> testImages;
     vector<int> testLabels;
     int imageSize = 25;
-    int output_size = 5;
+    int output_size = 10;
     int num_img_train = 30;
     int num_img_test = 30;
 
@@ -43,8 +43,6 @@ int main(int argc, char** argv) {
     init_mat(testImages);
     testLabels.resize(output_size);
     init_arr_int(testLabels);
-
-    const float output_size = 10;
 
     //-- Init weights
     // TODO: user defined number of layers
