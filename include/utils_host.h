@@ -5,7 +5,7 @@
 
 void init_mat(vector<vector<float>> &mat);
 
-void init_arr_int(vector<float> &arr);
+void init_arr_int(vector<int> &arr);
 
 float* _transpose_CPU(float*, int, int);
 
