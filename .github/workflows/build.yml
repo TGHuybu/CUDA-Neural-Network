@@ -18,9 +18,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: info
-      run: echo ${env.OWNER}
+      run: echo ${{env.OWNER}}
     - name: egg
-      run: echo ${secrets.EASTER_EGG}
+      run: echo ${{secrets.EASTER_EGG}}
     - name: setup
       run: mkdir bin
     - name: make
