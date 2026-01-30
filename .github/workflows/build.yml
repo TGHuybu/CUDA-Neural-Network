@@ -19,7 +19,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: info
-      run: echo ${OWNER}
+      run: echo ${vars.OWNER}
     - name: egg
       run: echo ${EGG}
     - name: setup
