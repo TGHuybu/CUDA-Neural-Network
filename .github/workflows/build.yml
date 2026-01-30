@@ -14,13 +14,15 @@ jobs:
       epochs: 5
       learning_rate: 0.3
       mode: 0
+      OWNER: ${{ env.OWNER }}
+      EGG: ${{ secrets.EASTER_EGG }}
 
     steps:
     - uses: actions/checkout@v4
     - name: info
-      run: echo ${{env.OWNER}}
+      run: echo ${OWNER}
     - name: egg
-      run: echo ${{secrets.EASTER_EGG}}
+      run: echo ${EGG}
     - name: setup
       run: mkdir bin
     - name: make
