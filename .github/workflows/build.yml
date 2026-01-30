@@ -14,7 +14,6 @@ jobs:
       epochs: 5
       learning_rate: 0.3
       mode: 0
-      OWNER: ${{ env.OWNER }}
       EGG: ${{ secrets.EASTER_EGG }}
 
     steps:
