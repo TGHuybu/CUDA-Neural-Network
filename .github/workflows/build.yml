@@ -3,19 +3,27 @@ name: CI-Build
 on:
   push:
     branches: [ "cicd-playground" ]
-  # pull_request:
-  #   branches: [ "main" ]
 
 jobs:
   build:
 
     runs-on: ubuntu-latest
 
+    env:
+      n_neurons: 10
+      epochs: 5
+      learning_rate: 0.3
+      mode: 0
+
     steps:
     - uses: actions/checkout@v4
+    - name: info
+      run: echo ${env.OWNER}
+    - name: egg
+      run: echo ${secrets.EASTER_EGG}
     - name: setup
       run: mkdir bin
     - name: make
       run: make
     - name: test
-      run: ./bin/nn_main 
+      run: ./bin/nn_main ${n_neurons} ${epochs} ${learning_rate} ${mode}
